@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Invoices</h2>
+<ul>
+{% for i in invoices %}
+  <li>
+    Invoice {{ i.invoice_id }}: {{ i.customer.first_name }} {{ i.customer.last_name }}
+    bought {{ i.quantity }} × {{ i.product.product_name }}
+    (Unit Price: ${{ "%.2f"|format(i.product.product_price) }}) → 
+    <b>Total: ${{ "%.2f"|format(i.quantity * i.product.product_price) }}</b>
+  </li>
+{% endfor %}
+</ul>
+
+<form method="post" action="/invoices/add">
+    <select name="customer_id" required>
+        {% for c in customers %}
+          <option value="{{ c.customer_id }}">{{ c.first_name }} {{ c.last_name }}</option>
+        {% endfor %}
+    </select>
+    <select name="product_id" required>
+        {% for p in products %}
+          <option value="{{ p.product_id }}">{{ p.product_name }} (${{ "%.2f"|format(p.product_price) }})</option>
+        {% endfor %}
+    </select>
+    <input name="quantity" type="number" min="1" value="1" required>
+    <button type="submit">Add Invoice</button>
+</form>
+{% endblock %}
