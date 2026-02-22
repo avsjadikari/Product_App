@@ -1,5 +1,30 @@
 {% extends "base.html" %}
 {% block content %}
-  <h2>Welcome to the Product App</h2>
-  <p>Use the navigation links above to manage customers, products, and invoices.</p>
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h4 class="mb-0">Dashboard</h4>
+    </div>
+    <div class="card-body">
+        <div class="row text-center">
+            <div class="col-md-4 mb-3">
+                <div class="p-4 bg-light rounded">
+                    <h2 class="text-primary">{{ stats.customers }}</h2>
+                    <p class="mb-0">Customers</p>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="p-4 bg-light rounded">
+                    <h2 class="text-success">{{ stats.products }}</h2>
+                    <p class="mb-0">Products</p>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="p-4 bg-light rounded">
+                    <h2 class="text-warning">{{ stats.invoices }}</h2>
+                    <p class="mb-0">Invoices</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
