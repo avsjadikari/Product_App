@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice #{{ invoice.invoice_id }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { padding: 20px; }
+        .invoice-box {
+            max-width: 800px;
+            margin: auto;
+            padding: 30px;
+            border: 1px solid #eee;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            background: white;
+        }
+        .invoice-header {
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+        .invoice-details {
+            margin-bottom: 30px;
+        }
+        @media print {
+            body { padding: 0; }
+            .no-print { display: none; }
+            .invoice-box { border: none; box-shadow: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="invoice-box">
+        <div class="invoice-header">
+            <div class="row">
+                <div class="col-md-6">
+                    <h2>INVOICE</h2>
+                </div>
+                <div class="col-md-6 text-end">
+                    <h5>Invoice #{{ invoice.invoice_id }}</h5>
+                    <p class="text-muted">Date: {{ invoice.created_at.strftime('%Y-%m-%d') if invoice.created_at else 'N/A' }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="invoice-details">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Customer Details:</h6>
+                    <p>
+                        <strong>{{ invoice.customer.first_name }} {{ invoice.customer.last_name }}</strong><br>
+                        {{ invoice.customer.customer_address }}<br>
+                        Phone: {{ invoice.customer.phone_number }}
+                    </p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <h6>Business Info:</h6>
+                    <p>
+                        Product App<br>
+                        Your Business Address<br>
+                        Phone: 000-000-0000
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <table class="table table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Product</th>
+                    <th>Model</th>
+                    <th>Unit Price</th>
+                    <th>Quantity</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{ invoice.product.product_name }}</td>
+                    <td>{{ invoice.product.product_model }}</td>
+                    <td>${{ "%.2f"|format(invoice.product.product_price) }}</td>
+                    <td>{{ invoice.quantity }}</td>
+                    <td><strong>${{ "%.2f"|format(invoice.quantity * invoice.product.product_price) }}</strong></td>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr class="table-success">
+                    <td colspan="4" class="text-end"><strong>Grand Total:</strong></td>
+                    <td><strong>${{ "%.2f"|format(invoice.quantity * invoice.product.product_price) }}</strong></td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <div class="text-center mt-4 no-print">
+            <button onclick="window.print()" class="btn btn-primary">Print Invoice</button>
+            <a href="/invoices" class="btn btn-secondary">Back to Invoices</a>
+        </div>
+    </div>
+</body>
+</html>
