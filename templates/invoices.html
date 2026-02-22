@@ -22,7 +22,7 @@
                 <tr>
                     <td>{{ i.invoice_id }}</td>
                     <td>{{ i.customer.first_name }} {{ i.customer.last_name }}</td>
-                    <td>{{ i.product.product_name }}</td>
+                    <td>{{ i.product.product_name }} ({{ i.product.product_model }})</td>
                     <td>{{ i.quantity }}</td>
                     <td>${{ "%.2f"|format(i.product.product_price) }}</td>
                     <td><strong>${{ "%.2f"|format(i.quantity * i.product.product_price) }}</strong></td>
@@ -52,7 +52,7 @@
                 <select name="product_id" class="form-select" required>
                     <option value="">Select Product</option>
                     {% for p in products %}
-                      <option value="{{ p.product_id }}">{{ p.product_name }} (${{ "%.2f"|format(p.product_price) }})</option>
+                      <option value="{{ p.product_id }}">{{ p.product_name }} ({{ p.product_model }}) - Stock: {{ p.product_quantity }} - ${{ "%.2f"|format(p.product_price) }}</option>
                     {% endfor %}
                 </select>
             </div>
