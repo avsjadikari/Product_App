@@ -1,90 +1,162 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="card mb-3">
-    <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <h4 class="mb-0">Create Invoice</h4>
-        <a href="/cart" class="btn btn-light btn-sm position-relative">
-            Cart
-            {% if cart_count > 0 %}
-            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                {{ cart_count }}
-            </span>
-            {% endif %}
-        </a>
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap">
+    <div>
+        <h1 class="page-title">Invoices</h1>
+        <p class="page-subtitle">Create invoices and view history</p>
     </div>
-    <div class="card-body">
-        <h5 class="d-md-none mb-3">Select Products</h5>
-        <div class="table-responsive">
-            <table class="table table-bordered table-sm mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Product</th>
-                        <th>Model</th>
-                        <th>Price</th>
-                        <th>Stock</th>
-                        <th>Qty</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                {% for p in products %}
-                    <tr>
-                        <td>{{ p.product_name }}</td>
-                        <td>{{ p.product_model }}</td>
-                        <td>LKR {{ "%.2f"|format(p.product_price) }}</td>
-                        <td>{{ p.product_quantity }}</td>
-                        <td style="width: 80px;">
-                            <form method="post" action="/cart/add/{{ p.product_id }}" class="d-flex">
-                                <input type="number" name="quantity" class="form-control form-control-sm" min="1" max="{{ p.product_quantity }}" value="1" required>
-                        </td>
-                        <td>
-                                <button type="submit" class="btn btn-success btn-sm">Add</button>
-                            </form>
-                        </td>
-                    </tr>
-                {% endfor %}
-                </tbody>
-            </table>
+    <a href="/cart" class="btn btn-primary position-relative">
+        <i class="bi bi-cart3 me-1"></i>Cart
+        {% if cart_count > 0 %}
+        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+            {{ cart_count }}
+        </span>
+        {% endif %}
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-12 col-xl-8">
+        {% if products %}
+        <div class="card mb-4">
+            <div class="card-header d-flex align-items-center">
+                <i class="bi bi-cart-plus text-success me-2"></i>
+                Add Products to Cart
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th><i class="bi bi-tag me-1"></i>Product</th>
+                                <th><i class="bi bi-currency-dollar me-1"></i>Price</th>
+                                <th><i class="bi bi-boxes me-1"></i>Stock</th>
+                                <th><i class="bi bi-hash me-1"></i>Qty</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for p in products %}
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">{{ p.product_name }}</div>
+                                    <small class="text-secondary">{{ p.product_model }} | {{ p.product_color }}</small>
+                                </td>
+                                <td class="fw-semibold">LKR {{ "%.2f"|format(p.product_price) }}</td>
+                                <td>
+                                    {% if p.product_quantity > 5 %}
+                                    <span class="badge bg-success">{{ p.product_quantity }}</span>
+                                    {% elif p.product_quantity > 0 %}
+                                    <span class="badge bg-warning text-dark">{{ p.product_quantity }}</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Out</span>
+                                    {% endif %}
+                                </td>
+                                <td style="width: 100px;">
+                                    <form method="post" action="/cart/add/{{ p.product_id }}" class="d-flex">
+                                        <input type="number" name="quantity" class="form-control form-control-sm" min="1" max="{{ p.product_quantity }}" value="1" required>
+                                </td>
+                                <td>
+                                        <button type="submit" class="btn btn-sm btn-success">
+                                            <i class="bi bi-plus-lg"></i> Add
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
+        {% else %}
+        <div class="card">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-box" style="font-size: 3rem; opacity: 0.3;"></i>
+                <p class="mt-2 mb-0 text-secondary">No products available</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-12 col-xl-4 mt-3 mt-xl-0">
+        {% if invoices %}
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <i class="bi bi-clock-history text-secondary me-2"></i>
+                Recent Invoices
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                {% for inv in invoices[:5] %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="fw-semibold">#{{ inv.invoice_id }}</div>
+                            <small class="text-secondary">{{ inv.customer.first_name }} {{ inv.customer.last_name }}</small>
+                        </div>
+                        <div class="text-end">
+                            {% set ns = namespace(total=0) %}
+                            {% for item in inv.items %}
+                                {% set ns.total = ns.total + (item.quantity * item.unit_price) %}
+                            {% endfor %}
+                            <div class="fw-semibold text-success">LKR {{ "%.2f"|format(ns.total) }}</div>
+                            <small class="text-muted">{{ inv.created_at.strftime('%Y-%m-%d') }}</small>
+                        </div>
+                    </div>
+                {% endfor %}
+                </div>
+                {% if invoices|length > 5 %}
+                <div class="card-footer text-center">
+                    <small class="text-muted">+{{ invoices|length - 5 }} more invoices</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 
 {% if invoices %}
-<div class="card">
-    <div class="card-header bg-secondary text-white">
-        <h4 class="mb-0">Invoice History</h4>
+<div class="card mt-4">
+    <div class="card-header d-flex align-items-center">
+        <i class="bi bi-receipt text-secondary me-2"></i>
+        Invoice History ({{ invoices|length }})
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-striped table-hover mb-0">
-                <thead class="table-light">
+            <table class="table table-hover mb-0">
+                <thead>
                     <tr>
-                        <th>Invoice #</th>
-                        <th>Customer</th>
-                        <th>Items</th>
-                        <th>Total</th>
+                        <th><i class="bi bi-hash me-1"></i>Invoice #</th>
+                        <th><i class="bi bi-person me-1"></i>Customer</th>
+                        <th><i class="bi bi-list me-1"></i>Items</th>
+                        <th><i class="bi bi-currency-dollar me-1"></i>Total</th>
+                        <th><i class="bi bi-calendar me-1"></i>Date</th>
                         <th></th>
                     </tr>
                 </thead>
                 <tbody>
                 {% for inv in invoices %}
                     <tr>
-                        <td>#{{ inv.invoice_id }}</td>
+                        <td class="fw-semibold">#{{ inv.invoice_id }}</td>
                         <td>{{ inv.customer.first_name }} {{ inv.customer.last_name }}</td>
                         <td>
                             {% for item in inv.items %}
-                                {{ item.product.product_name }} x{{ item.quantity }}{% if not loop.last %}, {% endif %}
+                                <span class="badge bg-light text-dark">{{ item.product.product_name }} x{{ item.quantity }}</span>
                             {% endfor %}
                         </td>
-                        <td>
+                        <td class="fw-semibold text-success">
                             {% set ns = namespace(total=0) %}
                             {% for item in inv.items %}
                                 {% set ns.total = ns.total + (item.quantity * item.unit_price) %}
                             {% endfor %}
-                            <strong>LKR {{ "%.2f"|format(ns.total) }}</strong>
+                            LKR {{ "%.2f"|format(ns.total) }}
                         </td>
+                        <td class="text-muted">{{ inv.created_at.strftime('%Y-%m-%d') }}</td>
                         <td>
-                            <a href="/invoice/print/{{ inv.invoice_id }}" target="_blank" class="btn btn-info btn-sm">Print</a>
+                            <a href="/invoice/print/{{ inv.invoice_id }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-printer"></i>
+                            </a>
                         </td>
                     </tr>
                 {% endfor %}

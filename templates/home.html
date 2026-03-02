@@ -1,28 +1,70 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="card">
-    <div class="card-header bg-primary text-white">
-        <h4 class="mb-0">Dashboard</h4>
+<div class="page-header">
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-subtitle">Overview of your business</p>
+</div>
+
+<div class="row g-3 g-lg-4">
+    <div class="col-12 col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon text-primary">
+                <i class="bi bi-people-fill"></i>
+            </div>
+            <div class="stat-value">{{ stats.customers }}</div>
+            <div class="stat-label">Customers</div>
+        </div>
     </div>
-    <div class="card-body">
-        <div class="row text-center">
-            <div class="col-md-4 mb-3">
-                <div class="p-4 bg-light rounded">
-                    <h2 class="text-primary">{{ stats.customers }}</h2>
-                    <p class="mb-0">Customers</p>
+    <div class="col-12 col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon text-success">
+                <i class="bi bi-box-fill"></i>
+            </div>
+            <div class="stat-value">{{ stats.products }}</div>
+            <div class="stat-label">Products</div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon text-warning">
+                <i class="bi bi-receipt"></i>
+            </div>
+            <div class="stat-value">{{ stats.invoices }}</div>
+            <div class="stat-label">Invoices</div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12 col-lg-6">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <i class="bi bi-lightning-charge text-primary me-2"></i>
+                Quick Actions
+            </div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="/customers" class="btn btn-primary">
+                        <i class="bi bi-person-plus me-1"></i> Add Customer
+                    </a>
+                    <a href="/products" class="btn btn-success">
+                        <i class="bi bi-plus-circle me-1"></i> Add Product
+                    </a>
+                    <a href="/invoices" class="btn btn-outline-primary">
+                        <i class="bi bi-cart-plus me-1"></i> New Invoice
+                    </a>
                 </div>
             </div>
-            <div class="col-md-4 mb-3">
-                <div class="p-4 bg-light rounded">
-                    <h2 class="text-success">{{ stats.products }}</h2>
-                    <p class="mb-0">Products</p>
-                </div>
+        </div>
+    </div>
+    <div class="col-12 col-lg-6 mt-3 mt-lg-0">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <i class="bi bi-info-circle text-primary me-2"></i>
+                Welcome
             </div>
-            <div class="col-md-4 mb-3">
-                <div class="p-4 bg-light rounded">
-                    <h2 class="text-warning">{{ stats.invoices }}</h2>
-                    <p class="mb-0">Invoices</p>
-                </div>
+            <div class="card-body">
+                <p class="mb-0 text-secondary">Manage your customers, products, and invoices all in one place.</p>
             </div>
         </div>
     </div>
