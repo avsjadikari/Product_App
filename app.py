@@ -1,11 +1,17 @@
+import os
 from flask import Flask, render_template, redirect, url_for, request, flash, session
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import joinedload
-from models import db, Customer, Product, Invoice, InvoiceItem, InvoiceItem
+from models import db, Customer, Product, Invoice, InvoiceItem
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = "Zaq12wsX"
-app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://postgres:Zaq12wsX@localhost:5432/product"
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'Zaq12wsX')
+db_user = os.environ.get('DB_USER', 'postgres')
+db_pass = os.environ.get('DB_PASSWORD', 'Zaq12wsX')
+db_host = os.environ.get('DB_HOST', 'localhost')
+db_port = os.environ.get('DB_PORT', '5432')
+db_name = os.environ.get('DB_NAME', 'product')
+app.config['SQLALCHEMY_DATABASE_URI'] = f"postgresql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
@@ -244,29 +250,6 @@ def invoices():
     ).all()
     cart_count = len(get_cart())
     return render_template("invoices.html", invoices=invoices_list, customers=Customer.query.all(), products=available_products, cart_count=cart_count)
-
-
-@app.route("/invoices/add", methods=["POST"])
-def add_invoice():
-    product_id = int(request.form["product_id"])
-    customer_id = int(request.form["customer_id"])
-    quantity = int(request.form["quantity"])
-
-    product = Product.query.get(product_id)
-    if product.product_quantity < quantity:
-        flash(f"Insufficient stock! Available: {product.product_quantity}", "danger")
-        return redirect(url_for("invoices"))
-
-    db.session.add(Invoice(
-        product_details=product_id,
-        customer_details=customer_id,
-        quantity=quantity
-    ))
-
-    product.product_quantity -= quantity
-    db.session.commit()
-
-    return redirect(url_for("invoices"))
 
 
 # -------- Print Invoice --------
