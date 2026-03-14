@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+    <div>
+        <h1 class="page-title">Sales Report</h1>
+        <p class="page-subtitle">View and filter sales data</p>
+    </div>
+    <div>
+        <a href="/reports/stock" class="btn btn-outline-secondary">
+            <i class="bi bi-box me-1"></i> Stock Report
+        </a>
+    </div>
+</div>
+
+<form method="GET" action="{{ url_for('sales_report') }}" class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-auto">
+                <label class="form-label">Start Date</label>
+                <input type="date" name="start_date" class="form-control" value="{{ start_date }}">
+            </div>
+            <div class="col-auto">
+                <label class="form-label">End Date</label>
+                <input type="date" name="end_date" class="form-control" value="{{ end_date }}">
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-filter me-1"></i> Filter
+                </button>
+            </div>
+            <div class="col-auto">
+                <a href="{{ url_for('sales_report') }}" class="btn btn-outline-secondary">Clear</a>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="row g-4 mb-4">
+    <div class="col-12 col-md-4">
+        <div class="card bg-success bg-opacity-10">
+            <div class="card-body text-center">
+                <div class="stat-value text-success">LKR {{ "%.2f"|format(total_sales) }}</div>
+                <div class="text-muted">Total Sales</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card bg-warning bg-opacity-10">
+            <div class="card-body text-center">
+                <div class="stat-value text-warning">LKR {{ "%.2f"|format(total_tax) }}</div>
+                <div class="text-muted">Total Tax</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card bg-info bg-opacity-10">
+            <div class="card-body text-center">
+                <div class="stat-value text-info">LKR {{ "%.2f"|format(total_discount) }}</div>
+                <div class="text-muted">Total Discount</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-receipt me-2"></i>
+        Paid Invoices
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Invoice #</th>
+                        <th>Customer</th>
+                        <th>Date</th>
+                        <th>Items</th>
+                        <th>Subtotal</th>
+                        <th>Tax</th>
+                        <th>Discount</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for invoice in invoices %}
+                    <tr>
+                        <td><a href="{{ url_for('invoice_print', invoice_id=invoice.invoice_id) }}">{{ invoice.invoice_number }}</a></td>
+                        <td>{{ invoice.customer.full_name }}</td>
+                        <td>{{ invoice.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ invoice.items|length }}</td>
+                        <td>LKR {{ "%.2f"|format(invoice.subtotal) }}</td>
+                        <td>LKR {{ "%.2f"|format(invoice.tax_amount) }}</td>
+                        <td>LKR {{ "%.2f"|format(invoice.discount_amount) }}</td>
+                        <td><strong>LKR {{ "%.2f"|format(invoice.total) }}</strong></td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-4">No paid invoices found</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

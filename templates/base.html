@@ -279,6 +279,13 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
+                    {% if current_user and current_user.is_admin %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/users">
+                            <i class="bi bi-people-fill me-1"></i> Users
+                        </a>
+                    </li>
+                    {% endif %}
                     <li class="nav-item">
                         <a class="nav-link" href="/customers">
                             <i class="bi bi-people me-1"></i> Customers
@@ -295,9 +302,40 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="/stock">
+                            <i class="bi bi-box me-1"></i> Stock
+                        </a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-graph-up me-1"></i> Reports
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/reports/sales">Sales Report</a></li>
+                            <li><a class="dropdown-item" href="/reports/stock">Stock Report</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="/cart">
                             <i class="bi bi-cart3 me-1"></i> Cart
                         </a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle me-1"></i> {{ session.username }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><span class="dropdown-item-text text-muted">
+                                <small>Role: {% if current_user and current_user.is_admin %}Admin{% else %}User{% endif %}</small>
+                            </span></li>
+                            <li><a class="dropdown-item" href="/profile/change-password">
+                                <i class="bi bi-key me-1"></i> Change Password
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="/logout">
+                                <i class="bi bi-box-arrow-right me-1"></i> Logout
+                            </a></li>
+                        </ul>
                     </li>
                 </ul>
             </div>

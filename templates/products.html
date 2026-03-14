@@ -5,6 +5,9 @@
         <h1 class="page-title">Products</h1>
         <p class="page-subtitle">Manage your product inventory</p>
     </div>
+    <a href="/stock" class="btn btn-outline-secondary">
+        <i class="bi bi-box-seam me-1"></i> Stock Management
+    </a>
 </div>
 
 <div class="row">
@@ -23,12 +26,13 @@
                                 <th><i class="bi bi-tag me-1"></i>Product</th>
                                 <th><i class="bi bi-currency-dollar me-1"></i>Price</th>
                                 <th><i class="bi bi-boxes me-1"></i>Stock</th>
-                                <th></th>
+                                <th>Status</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                         {% for p in products %}
-                            <tr>
+                            <tr class="{% if p.is_low_stock %}table-warning{% endif %}">
                                 <td>
                                     <div class="fw-semibold">{{ p.product_name }}</div>
                                     <small class="text-secondary">{{ p.product_type }} | {{ p.product_model }} | {{ p.product_color }}</small>
@@ -38,12 +42,24 @@
                                     {% if p.product_quantity > 0 %}
                                     <span class="badge bg-success">{{ p.product_quantity }}</span>
                                     {% else %}
-                                    <span class="badge bg-danger">Out of stock</span>
+                                    <span class="badge bg-danger">0</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if p.product_quantity == 0 %}
+                                    <span class="badge bg-danger">Out</span>
+                                    {% elif p.is_low_stock %}
+                                    <span class="badge bg-warning">Low</span>
+                                    {% else %}
+                                    <span class="badge bg-success">OK</span>
                                     {% endif %}
                                 </td>
                                 <td>
                                     <a href="/products/edit/{{ p.product_id }}" class="btn btn-sm btn-outline-primary">
                                         <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{{ url_for('delete_product', id=p.product_id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure?')">
+                                        <i class="bi bi-trash"></i>
                                     </a>
                                 </td>
                             </tr>
@@ -94,6 +110,11 @@
                             <label class="form-label small text-secondary">Quantity</label>
                             <input name="product_quantity" class="form-control" placeholder="10" type="number" min="0" value="0" required>
                         </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small text-secondary">Low Stock Threshold</label>
+                        <input name="low_stock_threshold" class="form-control" placeholder="5" type="number" min="0" value="5">
+                        <small class="text-muted">Alert when stock falls below this number</small>
                     </div>
                     <button type="submit" class="btn btn-success w-100">
                         <i class="bi bi-plus-lg me-1"></i> Add Product

@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap">
+    <div>
+        <h1 class="page-title">User Management</h1>
+        <p class="page-subtitle">Manage application users</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12 col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <i class="bi bi-people text-primary me-2"></i>
+                All Users ({{ users|length }})
+            </div>
+            <div class="card-body p-0">
+                {% if users %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th><i class="bi bi-person me-1"></i>Username</th>
+                                <th><i class="bi bi-shield-check me-1"></i>Role</th>
+                                <th><i class="bi bi-calendar me-1"></i>Created</th>
+                                <th><i class="bi bi-check-circle me-1"></i>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for u in users %}
+                            <tr>
+                                <td class="fw-semibold">{{ u.username }}</td>
+                                <td>
+                                    {% if u.role == 'admin' %}
+                                    <span class="badge bg-danger">Admin</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">User</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ u.created_at.strftime('%Y-%m-%d') }}</td>
+                                <td>
+                                    {% if u.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if u.user_id != current_user.user_id and u.is_active %}
+                                    <a href="{{ url_for('delete_user', id=u.user_id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to deactivate this user?')">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-secondary">
+                    <i class="bi bi-people" style="font-size: 3rem; opacity: 0.3;"></i>
+                    <p class="mt-2 mb-0">No users found</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-4 mt-3 mt-lg-0">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <i class="bi bi-person-plus text-primary me-2"></i>
+                Add User
+            </div>
+            <div class="card-body">
+                <form method="post" action="/users/add">
+                    <div class="mb-3">
+                        <label class="form-label small text-secondary">Username</label>
+                        <input name="username" class="form-control" placeholder="Enter username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small text-secondary">Password</label>
+                        <input name="password" type="password" class="form-control" placeholder="Enter password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small text-secondary">Role</label>
+                        <select name="role" class="form-select">
+                            <option value="user">User</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-plus-lg me-1"></i> Add User
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card mt-3 border-danger">
+            <div class="card-header bg-danger bg-opacity-10 d-flex align-items-center">
+                <i class="bi bi-exclamation-triangle text-danger me-2"></i>
+                Danger Zone
+            </div>
+            <div class="card-body">
+                <p class="small text-muted">Reset the database to default state. This will delete all data and recreate sample data.</p>
+                <form method="POST" action="/database/reset" onsubmit="return confirm('WARNING: This will delete ALL data and reset to defaults. Are you sure?')">
+                    <button type="submit" class="btn btn-outline-danger w-100">
+                        <i class="bi bi-arrow-repeat me-1"></i> Reset Database
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

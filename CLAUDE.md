@@ -4,55 +4,70 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A Flask web application for managing customers, products, and invoices with shopping cart functionality. Uses Flask-SQLAlchemy with PostgreSQL.
+A Flask-based Point of Sale (POS) application for managing customers, products, invoices, and inventory. Features include shopping cart, invoice generation, stock tracking, and sales reporting.
 
-## Running the App
+## Running the Application
 
 ```bash
-cd OneDrive/Documents/Product_App
 pip install -r requirements.txt
 python app.py
 ```
 
-The app runs on http://localhost:5000 with debug mode enabled. Database tables are auto-created on startup.
-
-## Database
-
-- PostgreSQL at localhost:5432
-- Database name: `product`
-- Credentials hardcoded in app.py config
+The app runs on `http://localhost:5000` with debug mode enabled. Database tables are auto-created on startup.
 
 ## Architecture
 
-- **app.py** - Flask application with routes for home, customers, products, cart, invoices
-- **models.py** - SQLAlchemy models: Customer, Product, Invoice, InvoiceItem
-- **templates/** - Jinja2 HTML templates with Bootstrap 5 mobile-responsive UI
+### Tech Stack
+- **Framework**: Flask with Flask-SQLAlchemy
+- **Database**: PostgreSQL (localhost:5432, database: `product`)
+- **ORM**: SQLAlchemy with explicit relationships and indexes
+- **Frontend**: Jinja2 templates with Bootstrap 5
 
-## Database Schema
+### File Structure
+```
+app.py          # Main Flask application with all routes
+models.py       # SQLAlchemy ORM models (User, Customer, Product, Invoice, InvoiceItem, StockMovement)
+forms.py        # WTForms (currently unused)
+templates/      # Jinja2 HTML templates
+```
 
-- **Customer** - customer_id, first_name, last_name, phone_number, customer_address
-- **Product** - product_id, product_type, product_name, product_model, product_color, product_price, product_quantity
-- **Invoice** - invoice_id, customer_details (FK), created_at
-- **InvoiceItem** - item_id, invoice_id (FK), product_details (FK), quantity, unit_price
+### Database Models
 
-One Invoice can have multiple InvoiceItems (cart checkout creates single invoice with multiple items).
+| Model | Purpose |
+|-------|---------|
+| User | Authentication with roles (admin/user), password hashing |
+| Customer | Customer records with name, phone, address |
+| Product | Inventory items with type, name, model, color, price, quantity |
+| Invoice | Sales transactions linked to customers |
+| InvoiceItem | Line items within invoices |
+| StockMovement | Audit trail for inventory changes (sales, adjustments, returns) |
 
-## Key Features
+### Key Patterns
 
-- **Shopping Cart** - Session-based cart supporting multiple products with different quantities
-- **Stock Management** - Quantity deducted from product stock on invoice creation
-- **Invoice Printing** - Each invoice can be printed with full details
-- **Sample Data** - Auto-loaded on first run (3 customers, 5 products)
+**Authentication**: Session-based with `@login_required` and `@admin_required` decorators. Passwords hashed with werkzeug.
 
-## Routes
+**Cart**: Session-based (`session['cart']` as list of `{'product_id': int, 'quantity': int}`). Validates stock before operations.
 
-- `/` - Dashboard with counts
-- `/customers` - Add/view customers
-- `/products` - Add/edit/view products
-- `/invoices` - Create invoice (add to cart), view history
-- `/cart` - View/edit cart, checkout
-- `/invoice/print/<id>` - Print specific invoice
+**Stock Management**: Automatic deduction on invoice checkout, returns stock on invoice cancellation/deletion. All movements tracked via `StockMovement` model.
 
-## Currency
+**Invoice Workflow**: Draft → Pending → Paid (or Cancelled). Only draft/pending invoices can be edited.
 
-All prices use LKR (Sri Lankan Rupee) format throughout the app.
+## Common Tasks
+
+**Add a new route**: Add `@app.route()` decorator in app.py with appropriate auth decorator.
+
+**Add a model field**: Add to model class in models.py, then run `db.drop_all()` and `db.create_all()` (or use migrations).
+
+**Add a template**: Create HTML in templates/ using Bootstrap 5 classes, extend `base.html`.
+
+## Configuration
+
+Environment variables (with defaults):
+- `SECRET_KEY`: Flask session secret
+- `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `DB_NAME`: PostgreSQL connection
+
+Default credentials: `postgres` / `Zaq12wsX` (for localhost)
+
+## Security Note
+
+The app has hardcoded credentials and secret key for development only. Before production deployment, move all secrets to environment variables and use strong credentials.

@@ -6,7 +6,7 @@
 </div>
 
 <div class="row g-3 g-lg-4">
-    <div class="col-12 col-md-4">
+    <div class="col-6 col-md-3">
         <div class="stat-card">
             <div class="stat-icon text-primary">
                 <i class="bi bi-people-fill"></i>
@@ -15,7 +15,7 @@
             <div class="stat-label">Customers</div>
         </div>
     </div>
-    <div class="col-12 col-md-4">
+    <div class="col-6 col-md-3">
         <div class="stat-card">
             <div class="stat-icon text-success">
                 <i class="bi bi-box-fill"></i>
@@ -24,19 +24,120 @@
             <div class="stat-label">Products</div>
         </div>
     </div>
-    <div class="col-12 col-md-4">
+    <div class="col-6 col-md-3">
         <div class="stat-card">
             <div class="stat-icon text-warning">
-                <i class="bi bi-receipt"></i>
+                <i class="bi bi-hourglass-split"></i>
             </div>
-            <div class="stat-value">{{ stats.invoices }}</div>
-            <div class="stat-label">Invoices</div>
+            <div class="stat-value">{{ stats.pending_invoices }}</div>
+            <div class="stat-label">Pending</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon text-success">
+                <i class="bi bi-check-circle-fill"></i>
+            </div>
+            <div class="stat-value">{{ stats.paid_invoices }}</div>
+            <div class="stat-label">Paid</div>
         </div>
     </div>
 </div>
 
+<div class="row mt-4 g-4">
+    <div class="col-12 col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <div>
+                    <i class="bi bi-clock-history text-primary me-2"></i>
+                    Recent Invoices
+                </div>
+                <a href="/invoices" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Invoice #</th>
+                                <th>Customer</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for invoice in recent_invoices %}
+                            <tr>
+                                <td><a href="{{ url_for('invoice_print', invoice_id=invoice.invoice_id) }}">{{ invoice.invoice_number }}</a></td>
+                                <td>{{ invoice.customer.full_name }}</td>
+                                <td>{{ invoice.created_at.strftime('%Y-%m-%d') }}</td>
+                                <td>
+                                    {% if invoice.status == 'paid' %}
+                                    <span class="badge bg-success">{{ invoice.status }}</span>
+                                    {% elif invoice.status == 'pending' %}
+                                    <span class="badge bg-warning">{{ invoice.status }}</span>
+                                    {% elif invoice.status == 'cancelled' %}
+                                    <span class="badge bg-danger">{{ invoice.status }}</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ invoice.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>LKR {{ "%.2f"|format(invoice.total) }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-3">No invoices yet</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-12 col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header d-flex align-items-center">
+                <i class="bi bi-currency-dollar text-success me-2"></i>
+                Total Revenue
+            </div>
+            <div class="card-body text-center">
+                <div class="stat-value text-success">LKR {{ "%.2f"|format(total_revenue) }}</div>
+                <div class="text-muted">From paid invoices</div>
+            </div>
+        </div>
+        
+        {% if low_stock_products %}
+        <div class="card border-warning">
+            <div class="card-header bg-warning bg-opacity-10 d-flex align-items-center">
+                <i class="bi bi-exclamation-triangle text-warning me-2"></i>
+                Low Stock Alert
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for product in low_stock_products %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ product.product_name }}</strong>
+                            <br><small class="text-muted">{{ product.product_model }}</small>
+                        </div>
+                        <span class="badge bg-warning">{{ product.product_quantity }} left</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="card-footer">
+                <a href="/stock" class="btn btn-sm btn-outline-warning w-100">Manage Stock</a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
 <div class="row mt-4">
-    <div class="col-12 col-lg-6">
+    <div class="col-12">
         <div class="card">
             <div class="card-header d-flex align-items-center">
                 <i class="bi bi-lightning-charge text-primary me-2"></i>
@@ -51,20 +152,12 @@
                         <i class="bi bi-plus-circle me-1"></i> Add Product
                     </a>
                     <a href="/invoices" class="btn btn-outline-primary">
-                        <i class="bi bi-cart-plus me-1"></i> New Invoice
+                        <i class="bi bi-receipt me-1"></i> All Invoices
+                    </a>
+                    <a href="/stock" class="btn btn-outline-secondary">
+                        <i class="bi bi-box-seam me-1"></i> Stock Management
                     </a>
                 </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-12 col-lg-6 mt-3 mt-lg-0">
-        <div class="card">
-            <div class="card-header d-flex align-items-center">
-                <i class="bi bi-info-circle text-primary me-2"></i>
-                Welcome
-            </div>
-            <div class="card-body">
-                <p class="mb-0 text-secondary">Manage your customers, products, and invoices all in one place.</p>
             </div>
         </div>
     </div>

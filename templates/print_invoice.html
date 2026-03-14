@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invoice #{{ invoice.invoice_id }}</title>
+    <title>Invoice {{ invoice.invoice_number }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
@@ -76,17 +76,46 @@
             padding: 12px 16px;
         }
 
-        .invoice-total {
+        .invoice-totals {
+            padding: 20px 30px;
+            background: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .invoice-total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+        }
+
+        .invoice-total-row.grand-total {
+            border-top: 2px solid var(--primary-color);
+            margin-top: 8px;
+            padding-top: 16px;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .invoice-footer {
             background: linear-gradient(135deg, var(--primary-color), #0f766e);
             color: white;
             padding: 20px 30px;
-            text-align: right;
+            text-align: center;
         }
 
-        .invoice-total .amount {
-            font-size: 1.75rem;
-            font-weight: 700;
+        .invoice-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
         }
+
+        .status-paid { background: #10b981; }
+        .status-pending { background: #f59e0b; }
+        .status-draft { background: #6b7280; }
+        .status-cancelled { background: #ef4444; }
 
         .no-print {
             padding: 20px 30px;
@@ -116,18 +145,38 @@
     <div class="invoice-box">
         <div class="invoice-header">
             <h1><i class="bi bi-receipt me-2"></i>INVOICE</h1>
-            <p class="mb-0">Invoice #{{ invoice.invoice_id }}</p>
+            <p class="mb-0">{{ invoice.invoice_number }}</p>
         </div>
 
         <div class="invoice-meta">
             <div class="row">
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <small class="text-muted text-uppercase">Invoice Date</small>
                     <p class="mb-0 fw-semibold">{{ invoice.created_at.strftime('%Y-%m-%d %H:%M') if invoice.created_at else 'N/A' }}</p>
                 </div>
-                <div class="col-md-6 text-md-end">
-                    <small class="text-muted text-uppercase">Payment Status</small>
-                    <p class="mb-0 fw-semibold text-success">Paid</p>
+                <div class="col-md-4 text-center">
+                    <small class="text-muted text-uppercase">Status</small>
+                    <p class="mb-0">
+                        {% if invoice.status == 'paid' %}
+                        <span class="invoice-status status-paid">Paid</span>
+                        {% elif invoice.status == 'pending' %}
+                        <span class="invoice-status status-pending">Pending</span>
+                        {% elif invoice.status == 'cancelled' %}
+                        <span class="invoice-status status-cancelled">Cancelled</span>
+                        {% else %}
+                        <span class="invoice-status status-draft">{{ invoice.status }}</span>
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-md-4 text-md-end">
+                    <small class="text-muted text-uppercase">Payment</small>
+                    <p class="mb-0 fw-semibold">
+                        {% if invoice.payment_method %}
+                            {{ invoice.payment_method|title }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </p>
                 </div>
             </div>
         </div>
@@ -135,9 +184,12 @@
         <div class="invoice-details">
             <div class="customer-info">
                 <small class="text-muted text-uppercase">Bill To</small>
-                <h5 class="mt-1 mb-1">{{ invoice.customer.first_name }} {{ invoice.customer.last_name }}</h5>
+                <h5 class="mt-1 mb-1">{{ invoice.customer.full_name }}</h5>
                 <p class="mb-1"><i class="bi bi-geo-alt me-2"></i>{{ invoice.customer.customer_address }}</p>
-                <p class="mb-0"><i class="bi bi-phone me-2"></i>{{ invoice.customer.phone_number }}</p>
+                <p class="mb-1"><i class="bi bi-phone me-2"></i>{{ invoice.customer.phone_number }}</p>
+                {% if invoice.customer.email %}
+                <p class="mb-0"><i class="bi bi-envelope me-2"></i>{{ invoice.customer.email }}</p>
+                {% endif %}
             </div>
         </div>
 
@@ -155,25 +207,48 @@
                 <tr>
                     <td>
                         <div class="fw-semibold">{{ item.product.product_name }}</div>
-                        <small class="text-muted">{{ item.product.product_model }}</small>
+                        <small class="text-muted">{{ item.product.product_model }} | {{ item.product.product_color }}</small>
                     </td>
                     <td class="text-end">LKR {{ "%.2f"|format(item.unit_price) }}</td>
                     <td class="text-end">{{ item.quantity }}</td>
-                    <td class="text-end fw-semibold">LKR {{ "%.2f"|format(item.quantity * item.unit_price) }}</td>
+                    <td class="text-end fw-semibold">LKR {{ "%.2f"|format(item.total) }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
 
-        <div class="invoice-total">
-            <small class="text-white-50 text-uppercase">Grand Total</small>
-            <div class="amount">
-                {% set ns = namespace(total=0) %}
-                {% for item in invoice.items %}
-                    {% set ns.total = ns.total + (item.quantity * item.unit_price) %}
-                {% endfor %}
-                LKR {{ "%.2f"|format(ns.total) }}
+        <div class="invoice-totals">
+            <div class="invoice-total-row">
+                <span>Subtotal</span>
+                <span>LKR {{ "%.2f"|format(invoice.subtotal) }}</span>
             </div>
+            {% if invoice.tax_rate > 0 %}
+            <div class="invoice-total-row">
+                <span>Tax ({{ invoice.tax_rate }}%)</span>
+                <span>LKR {{ "%.2f"|format(invoice.tax_amount) }}</span>
+            </div>
+            {% endif %}
+            {% if invoice.discount_amount > 0 %}
+            <div class="invoice-total-row text-success">
+                <span>Discount</span>
+                <span>-LKR {{ "%.2f"|format(invoice.discount_amount) }}</span>
+            </div>
+            {% endif %}
+            <div class="invoice-total-row grand-total">
+                <span>Grand Total</span>
+                <span>LKR {{ "%.2f"|format(invoice.total) }}</span>
+            </div>
+        </div>
+
+        {% if invoice.notes %}
+        <div class="invoice-details pb-0">
+            <small class="text-muted text-uppercase">Notes</small>
+            <p class="mb-0">{{ invoice.notes }}</p>
+        </div>
+        {% endif %}
+
+        <div class="invoice-footer">
+            <p class="mb-0">Thank you for your business!</p>
         </div>
 
         <div class="no-print">
