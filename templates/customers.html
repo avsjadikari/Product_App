@@ -5,6 +5,30 @@
         <h1 class="page-title">Customers</h1>
         <p class="page-subtitle">Manage your customer database</p>
     </div>
+    <a href="/export/customers" class="btn btn-outline-success">
+        <i class="bi bi-download me-1"></i> Export CSV
+    </a>
+</div>
+
+<!-- Search -->
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-md-6">
+                <input type="text" name="search" class="form-control" placeholder="Search customers by name, phone, or email..." value="{{ search }}">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search me-1"></i> Search
+                </button>
+            </div>
+            {% if search %}
+            <div class="col-md-2">
+                <a href="{{ url_for('customers') }}" class="btn btn-outline-secondary w-100">Clear</a>
+            </div>
+            {% endif %}
+        </form>
+    </div>
 </div>
 
 <div class="row">
@@ -12,7 +36,7 @@
         <div class="card">
             <div class="card-header d-flex align-items-center">
                 <i class="bi bi-people text-primary me-2"></i>
-                All Customers ({{ customers|length }})
+                Customers ({{ pagination.total }})
             </div>
             <div class="card-body p-0">
                 {% if customers %}
@@ -35,10 +59,13 @@
                                 <td>{{ c.email or '-' }}</td>
                                 <td>{{ c.customer_address }}</td>
                                 <td>
-                                    <a href="{{ url_for('edit_customer', id=c.customer_id) }}" class="btn btn-sm btn-outline-primary">
+                                    <a href="{{ url_for('view_customer', id=c.customer_id) }}" class="btn btn-sm btn-outline-info" title="View Profile">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{{ url_for('edit_customer', id=c.customer_id) }}" class="btn btn-sm btn-outline-primary" title="Edit">
                                         <i class="bi bi-pencil"></i>
                                     </a>
-                                    <a href="{{ url_for('delete_customer', id=c.customer_id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure?')">
+                                    <a href="{{ url_for('delete_customer', id=c.customer_id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure?')" title="Delete">
                                         <i class="bi bi-trash"></i>
                                     </a>
                                 </td>
@@ -50,11 +77,30 @@
                 {% else %}
                 <div class="text-center py-5 text-secondary">
                     <i class="bi bi-people" style="font-size: 3rem; opacity: 0.3;"></i>
-                    <p class="mt-2 mb-0">No customers yet</p>
+                    <p class="mt-2 mb-0">No customers found</p>
                 </div>
                 {% endif %}
             </div>
         </div>
+        
+        <!-- Pagination -->
+        {% if pagination.pages > 1 %}
+        <nav class="mt-3">
+            <ul class="pagination justify-content-center">
+                <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('customers', page=1, search=search) }}">&laquo;</a>
+                </li>
+                {% for p in range(1, pagination.pages + 1) %}
+                <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for('customers', page=p, search=search) }}">{{ p }}</a>
+                </li>
+                {% endfor %}
+                <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('customers', page=pagination.pages, search=search) }}">&raquo;</a>
+                </li>
+            </ul>
+        </nav>
+        {% endif %}
     </div>
 
     <div class="col-12 col-lg-4 mt-3 mt-lg-0">
@@ -65,25 +111,26 @@
             </div>
             <div class="card-body">
                 <form method="post" action="/customers/add">
+                    {{ form.hidden_tag() }}
                     <div class="mb-3">
                         <label class="form-label small text-secondary">First Name</label>
-                        <input name="first_name" class="form-control" placeholder="John" required>
+                        {{ form.first_name(class="form-control", placeholder="John") }}
                     </div>
                     <div class="mb-3">
                         <label class="form-label small text-secondary">Last Name</label>
-                        <input name="last_name" class="form-control" placeholder="Doe" required>
+                        {{ form.last_name(class="form-control", placeholder="Doe") }}
                     </div>
                     <div class="mb-3">
                         <label class="form-label small text-secondary">Phone</label>
-                        <input name="phone_number" class="form-control" placeholder="1234567890" required>
+                        {{ form.phone_number(class="form-control", placeholder="1234567890") }}
                     </div>
                     <div class="mb-3">
                         <label class="form-label small text-secondary">Email</label>
-                        <input name="email" type="email" class="form-control" placeholder="john@example.com">
+                        {{ form.email(class="form-control", placeholder="john@example.com") }}
                     </div>
                     <div class="mb-3">
                         <label class="form-label small text-secondary">Address</label>
-                        <input name="customer_address" class="form-control" placeholder="123 Main St" required>
+                        {{ form.customer_address(class="form-control", placeholder="123 Main St") }}
                     </div>
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="bi bi-plus-lg me-1"></i> Add Customer

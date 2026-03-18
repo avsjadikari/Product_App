@@ -1,23 +1,57 @@
 import os
-from datetime import datetime
+import logging
+from datetime import datetime, timedelta
 from functools import wraps
 from flask import Flask, render_template, redirect, url_for, request, flash, session, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import joinedload
 from models import db, User, Customer, Product, Invoice, InvoiceItem, StockMovement
+from config import Config
+from forms import CustomerForm, ProductForm
+from api import api as api_blueprint
+from utils import (
+    export_products_csv, export_customers_csv, export_invoices_csv,
+    export_sales_report_csv, search_products, search_customers, search_invoices
+)
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'Zaq12wsX')
-db_user = os.environ.get('DB_USER', 'postgres')
-db_pass = os.environ.get('DB_PASSWORD', 'Zaq12wsX')
-db_host = os.environ.get('DB_HOST', 'localhost')
-db_port = os.environ.get('DB_PORT', '5432')
-db_name = os.environ.get('DB_NAME', 'product')
-app.config['SQLALCHEMY_DATABASE_URI'] = f"postgresql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['DEFAULT_TAX_RATE'] = 0
+app.register_blueprint(api_blueprint)
+Config.init_app(app)
 
 db.init_app(app)
+app_logger = logging.getLogger(__name__)
+
+
+# ============ AUDIT LOGGING FUNCTIONALITY ============
+
+def log_user_action(action: str, details: str = None):
+    """Log user actions for audit trail."""
+    username = session.get('username', 'Anonymous')
+    ip_address = request.remote_addr
+    user_agent = request.headers.get('User-Agent', 'Unknown')
+    
+    log_msg = f"USER: {username} | ACTION: {action} | IP: {ip_address}"
+    if details:
+        log_msg += f" | DETAILS: {details}"
+    
+    app_logger.info(log_msg)
+
+
+def log_error(error_type: str, error_message: str):
+    """Log errors for debugging and monitoring."""
+    username = session.get('username', 'Anonymous')
+    app_logger.error(f"USER: {username} | ERROR: {error_type} | MESSAGE: {error_message}")
+
+
+def audit_required(action_name: str):
+    """Decorator to audit specific actions."""
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            log_user_action(action_name)
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
 
 
 def login_required(f):
@@ -51,14 +85,10 @@ def get_current_user():
 
 @app.context_processor
 def inject_user():
-    return dict(current_user=get_current_user())
+    return dict(current_user=get_current_user(), request=request)
 
 
 with app.app_context():
-    try:
-        db.drop_all()
-    except:
-        pass
     db.create_all()
 
     if User.query.count() == 0:
@@ -146,6 +176,7 @@ def login():
             session['user_id'] = user.user_id
             session['username'] = user.username
             session['role'] = user.role
+            log_user_action("LOGIN", f"User {username} logged in successfully")
             
             if user.force_password_change:
                 flash("You must change your password before continuing.", "warning")
@@ -155,13 +186,16 @@ def login():
             return redirect(url_for('home'))
         else:
             flash("Invalid username or password.", "danger")
+            log_user_action("LOGIN_FAILED", f"Failed login attempt for username: {username}")
     
     return render_template("login.html")
 
 
 @app.route("/logout")
 def logout():
+    username = session.get('username', 'Unknown')
     session.clear()
+    log_user_action("LOGOUT", f"User {username} logged out")
     flash("You have been logged out.", "info")
     return redirect(url_for('login'))
 
@@ -212,8 +246,38 @@ def home():
     
     total_revenue = db.session.query(db.func.sum(Invoice.total)).filter(Invoice.status == 'paid').scalar() or 0
     
+    # Get last 7 days sales data
+    today = datetime.now()
+    seven_days_ago = today - timedelta(days=6)
+    
+    sales_data = db.session.query(
+        db.func.date(Invoice.created_at).label('date'),
+        db.func.sum(Invoice.total).label('total')
+    ).filter(
+        Invoice.status == 'paid',
+        Invoice.created_at >= seven_days_ago
+    ).group_by(
+        db.func.date(Invoice.created_at)
+    ).order_by(
+        db.func.date(Invoice.created_at)
+    ).all()
+    
+    sales_dict = {}
+    for data_date, data_total in sales_data:
+        date_str = str(data_date).split(' ')[0]
+        sales_dict[date_str] = data_total
+        
+    chart_labels = []
+    chart_data = []
+    for idx in range(7):
+        day = (seven_days_ago + timedelta(days=idx)).date()
+        date_str = day.strftime('%Y-%m-%d')
+        chart_labels.append(day.strftime('%b %d'))
+        chart_data.append(float(sales_dict.get(date_str, 0)))
+    
     return render_template("home.html", stats=stats, low_stock_products=low_stock_products, 
-                          recent_invoices=recent_invoices, total_revenue=total_revenue)
+                          recent_invoices=recent_invoices, total_revenue=total_revenue,
+                          chart_labels=chart_labels, chart_data=chart_data)
 
 
 @app.route("/users")
@@ -300,21 +364,53 @@ def reset_database():
 @app.route("/customers")
 @login_required
 def customers():
-    return render_template("customers.html", customers=Customer.query.filter_by(is_active=True).all())
+    form = CustomerForm()
+    search = request.args.get('search', '')
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    
+    query = Customer.query.filter_by(is_active=True)
+    
+    if search:
+        term = f"%{search}%"
+        query = query.filter(
+            db.or_(
+                Customer.first_name.ilike(term),
+                Customer.last_name.ilike(term),
+                Customer.phone_number.ilike(term),
+                Customer.email.ilike(term)
+            )
+        )
+    
+    pagination = query.order_by(Customer.first_name, Customer.last_name).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    return render_template("customers.html", 
+                          customers=pagination.items,
+                          pagination=pagination,
+                          search=search,
+                          form=form)
 
 
 @app.route("/customers/add", methods=["POST"])
 @login_required
 def add_customer():
-    db.session.add(Customer(
-        first_name=request.form["first_name"],
-        last_name=request.form["last_name"],
-        phone_number=request.form["phone_number"],
-        customer_address=request.form["customer_address"],
-        email=request.form.get("email", "")
-    ))
-    db.session.commit()
-    flash("Customer added successfully!", "success")
+    form = CustomerForm()
+    if form.validate_on_submit():
+        db.session.add(Customer(
+            first_name=form.first_name.data,
+            last_name=form.last_name.data,
+            phone_number=form.phone_number.data,
+            customer_address=form.customer_address.data,
+            email=form.email.data
+        ))
+        db.session.commit()
+        flash("Customer added successfully!", "success")
+    else:
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f"{getattr(form, field).label.text}: {error}", "danger")
     return redirect(url_for("customers"))
 
 
@@ -322,16 +418,25 @@ def add_customer():
 @login_required
 def edit_customer(id):
     customer = Customer.query.get_or_404(id)
-    if request.method == "POST":
-        customer.first_name = request.form["first_name"]
-        customer.last_name = request.form["last_name"]
-        customer.phone_number = request.form["phone_number"]
-        customer.customer_address = request.form["customer_address"]
-        customer.email = request.form.get("email", "")
+    form = CustomerForm(obj=customer)
+    if form.validate_on_submit():
+        form.populate_obj(customer)
         db.session.commit()
         flash("Customer updated successfully!", "success")
         return redirect(url_for("customers"))
-    return render_template("edit_customer.html", customer=customer)
+    return render_template("edit_customer.html", customer=customer, form=form)
+
+
+@app.route("/customers/view/<int:id>")
+@login_required
+def view_customer(id):
+    customer = Customer.query.options(
+        joinedload(Customer.invoices)
+    ).get_or_404(id)
+    
+    lifetime_value = sum(inv.total for inv in customer.invoices if inv.status == 'paid')
+    
+    return render_template("customer_profile.html", customer=customer, lifetime_value=lifetime_value)
 
 
 @app.route("/customers/delete/<int:id>")
@@ -347,23 +452,67 @@ def delete_customer(id):
 @app.route("/products")
 @login_required
 def products():
-    return render_template("products.html", products=Product.query.filter_by(is_active=True).all())
+    form = ProductForm()
+    search = request.args.get('search', '')
+    product_type = request.args.get('type', '')
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    
+    # Build query with filters
+    query = Product.query.filter_by(is_active=True)
+    
+    if search:
+        term = f"%{search}%"
+        query = query.filter(
+            db.or_(
+                Product.product_name.ilike(term),
+                Product.product_model.ilike(term),
+                Product.product_type.ilike(term),
+                Product.product_color.ilike(term)
+            )
+        )
+    
+    if product_type:
+        query = query.filter_by(product_type=product_type)
+    
+    # Get unique product types for filter dropdown
+    product_types = db.session.query(Product.product_type).distinct().all()
+    product_types = [pt[0] for pt in product_types]
+    
+    # Paginate
+    pagination = query.order_by(Product.product_name).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    return render_template("products.html", 
+                          products=pagination.items,
+                          pagination=pagination,
+                          search=search,
+                          selected_type=product_type,
+                          product_types=product_types,
+                          form=form)
 
 
 @app.route("/products/add", methods=["POST"])
 @login_required
 def add_product():
-    db.session.add(Product(
-        product_type=request.form["product_type"],
-        product_name=request.form["product_name"],
-        product_model=request.form["product_model"],
-        product_color=request.form["product_color"],
-        product_price=float(request.form["product_price"]),
-        product_quantity=int(request.form["product_quantity"]),
-        low_stock_threshold=int(request.form.get("low_stock_threshold", 5))
-    ))
-    db.session.commit()
-    flash("Product added successfully!", "success")
+    form = ProductForm()
+    if form.validate_on_submit():
+        db.session.add(Product(
+            product_type=form.product_type.data,
+            product_name=form.product_name.data,
+            product_model=form.product_model.data,
+            product_color=form.product_color.data,
+            product_price=form.product_price.data,
+            product_quantity=form.product_quantity.data,
+            low_stock_threshold=form.low_stock_threshold.data or 5
+        ))
+        db.session.commit()
+        flash("Product added successfully!", "success")
+    else:
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f"{getattr(form, field).label.text}: {error}", "danger")
     return redirect(url_for("products"))
 
 
@@ -371,28 +520,24 @@ def add_product():
 @login_required
 def edit_product(id):
     product = Product.query.get_or_404(id)
-    if request.method == "POST":
+    form = ProductForm(obj=product)
+    
+    if form.validate_on_submit():
         old_quantity = product.product_quantity
-        product.product_type = request.form["product_type"]
-        product.product_name = request.form["product_name"]
-        product.product_model = request.form["product_model"]
-        product.product_color = request.form["product_color"]
-        product.product_price = float(request.form["product_price"])
-        product.low_stock_threshold = int(request.form.get("low_stock_threshold", 5))
+        form.populate_obj(product)
         
-        new_quantity = int(request.form["product_quantity"])
+        new_quantity = form.product_quantity.data
         if new_quantity != old_quantity:
             quantity_diff = new_quantity - old_quantity
             if quantity_diff > 0:
                 record_stock_movement(product.product_id, 'adjustment_in', quantity_diff, notes="Product edit adjustment")
             else:
                 record_stock_movement(product.product_id, 'adjustment_out', abs(quantity_diff), notes="Product edit adjustment")
-            product.product_quantity = new_quantity
         
         db.session.commit()
         flash("Product updated successfully!", "success")
         return redirect(url_for("products"))
-    return render_template("edit_product.html", product=product)
+    return render_template("edit_product.html", product=product, form=form)
 
 
 @app.route("/products/delete/<int:id>")
@@ -574,6 +719,10 @@ def cart_checkout():
 @login_required
 def invoices():
     status_filter = request.args.get("status", "all")
+    search = request.args.get('search', '')
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    
     query = Invoice.query.options(
         joinedload(Invoice.customer),
         joinedload(Invoice.items).joinedload(InvoiceItem.product)
@@ -582,15 +731,31 @@ def invoices():
     if status_filter != "all":
         query = query.filter(Invoice.status == status_filter)
     
-    invoices_list = query.order_by(Invoice.created_at.desc()).all()
+    # Search by invoice number or customer name
+    if search:
+        term = f"%{search}%"
+        query = query.join(Customer).filter(
+            db.or_(
+                Invoice.invoice_number.ilike(term),
+                Customer.first_name.ilike(term),
+                Customer.last_name.ilike(term)
+            )
+        )
+    
+    pagination = query.order_by(Invoice.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
     available_products = Product.query.filter(Product.product_quantity > 0, Product.is_active == True).all()
     
     return render_template("invoices.html", 
-                          invoices=invoices_list, 
+                          invoices=pagination.items, 
                           customers=Customer.query.filter_by(is_active=True).all(), 
                           products=available_products, 
                           cart_count=len(get_cart()),
-                          current_status=status_filter)
+                          current_status=status_filter,
+                          pagination=pagination,
+                          search=search)
 
 
 @app.route("/invoices/create", methods=["POST"])
@@ -809,5 +974,100 @@ def stock_report():
                           out_of_stock_count=out_of_stock_count)
 
 
+# ============ EXPORT ROUTES ============
+
+@app.route("/export/products")
+@login_required
+def export_products():
+    """Export products to CSV."""
+    log_user_action("EXPORT", "Exported products to CSV")
+    products = Product.query.filter_by(is_active=True).all()
+    return export_products_csv(products)
+
+
+@app.route("/export/customers")
+@login_required
+def export_customers():
+    """Export customers to CSV."""
+    log_user_action("EXPORT", "Exported customers to CSV")
+    customers = Customer.query.filter_by(is_active=True).all()
+    return export_customers_csv(customers)
+
+
+@app.route("/export/invoices")
+@login_required
+def export_invoices():
+    """Export invoices to CSV."""
+    log_user_action("EXPORT", "Exported invoices to CSV")
+    status_filter = request.args.get("status", "all")
+    query = Invoice.query.options(joinedload(Invoice.customer))
+    
+    if status_filter != "all":
+        query = query.filter(Invoice.status == status_filter)
+    
+    invoices = query.order_by(Invoice.created_at.desc()).all()
+    return export_invoices_csv(invoices)
+
+
+@app.route("/export/sales-report")
+@login_required
+def export_sales():
+    """Export sales report to CSV."""
+    start_date = request.args.get("start_date")
+    end_date = request.args.get("end_date")
+    
+    log_user_action("EXPORT", f"Exported sales report to CSV ({start_date} to {end_date})")
+    
+    query = Invoice.query.options(
+        joinedload(Invoice.customer)
+    ).filter(Invoice.status == 'paid')
+    
+    if start_date:
+        query = query.filter(db.func.date(Invoice.created_at) >= start_date)
+    if end_date:
+        query = query.filter(db.func.date(Invoice.created_at) <= end_date)
+    
+    invoices = query.order_by(Invoice.created_at.desc()).all()
+    
+    total_sales = sum(inv.total for inv in invoices)
+    total_tax = sum(inv.tax_amount for inv in invoices)
+    total_discount = sum(inv.discount_amount for inv in invoices)
+    
+    return export_sales_report_csv(invoices, total_sales, total_tax, total_discount)
+
+
+# ============ SEARCH ROUTES (AJAX) ============
+
+@app.route("/search/products")
+@login_required
+def search_products_ajax():
+    """AJAX search for products."""
+    term = request.args.get("q", "")
+    products = search_products(term).limit(10).all()
+    return jsonify([{
+        'id': p.product_id,
+        'name': p.product_name,
+        'model': p.product_model,
+        'price': float(p.product_price),
+        'quantity': p.product_quantity
+    } for p in products])
+
+
+@app.route("/search/customers")
+@login_required
+def search_customers_ajax():
+    """AJAX search for customers."""
+    term = request.args.get("q", "")
+    customers = search_customers(term).limit(10).all()
+    return jsonify([{
+        'id': c.customer_id,
+        'name': c.full_name,
+        'phone': c.phone_number
+    } for c in customers])
+
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    import os
+    host = os.environ.get('FLASK_HOST', '0.0.0.0')
+    port = int(os.environ.get('FLASK_PORT', 5000))
+    app.run(host=host, port=port, debug=True)

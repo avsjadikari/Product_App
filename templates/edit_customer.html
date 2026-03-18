@@ -14,25 +14,26 @@
             </div>
             <div class="card-body">
                 <form method="post">
+                    {{ form.hidden_tag() }}
                     <div class="mb-3">
                         <label class="form-label">First Name</label>
-                        <input name="first_name" class="form-control" value="{{ customer.first_name }}" required>
+                        {{ form.first_name(class="form-control") }}
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Last Name</label>
-                        <input name="last_name" class="form-control" value="{{ customer.last_name }}" required>
+                        {{ form.last_name(class="form-control") }}
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Phone</label>
-                        <input name="phone_number" class="form-control" value="{{ customer.phone_number }}" required>
+                        {{ form.phone_number(class="form-control") }}
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Email</label>
-                        <input name="email" type="email" class="form-control" value="{{ customer.email or '' }}">
+                        {{ form.email(class="form-control") }}
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Address</label>
-                        <input name="customer_address" class="form-control" value="{{ customer.customer_address }}" required>
+                        {{ form.customer_address(class="form-control") }}
                     </div>
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">

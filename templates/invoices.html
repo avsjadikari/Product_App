@@ -6,6 +6,9 @@
         <p class="page-subtitle">Manage invoices and sales</p>
     </div>
     <div class="d-flex gap-2">
+        <a href="/export/invoices?status={{ current_status }}" class="btn btn-outline-success">
+            <i class="bi bi-download me-1"></i> Export CSV
+        </a>
         <a href="/cart" class="btn btn-primary position-relative">
             <i class="bi bi-cart3 me-1"></i>Cart
             {% if cart_count > 0 %}
@@ -17,18 +20,28 @@
     </div>
 </div>
 
+<!-- Search and Filter -->
 <div class="card mb-4">
-    <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
-        <div>
-            <i class="bi bi-funnel me-2"></i>Filter by Status
-        </div>
-        <div class="btn-group">
-            <a href="{{ url_for('invoices', status='all') }}" class="btn btn-sm {% if current_status == 'all' %}btn-primary{% else %}btn-outline-primary{% endif %}">All</a>
-            <a href="{{ url_for('invoices', status='draft') }}" class="btn btn-sm {% if current_status == 'draft' %}btn-primary{% else %}btn-outline-primary{% endif %}">Draft</a>
-            <a href="{{ url_for('invoices', status='pending') }}" class="btn btn-sm {% if current_status == 'pending' %}btn-primary{% else %}btn-outline-primary{% endif %}">Pending</a>
-            <a href="{{ url_for('invoices', status='paid') }}" class="btn btn-sm {% if current_status == 'paid' %}btn-primary{% else %}btn-outline-primary{% endif %}">Paid</a>
-            <a href="{{ url_for('invoices', status='cancelled') }}" class="btn btn-sm {% if current_status == 'cancelled' %}btn-primary{% else %}btn-outline-primary{% endif %}">Cancelled</a>
-        </div>
+    <div class="card-body py-2">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-md-3">
+                <input type="text" name="search" class="form-control" placeholder="Search invoice or customer..." value="{{ search }}">
+            </div>
+            <div class="col-md-4">
+                <div class="btn-group">
+                    <a href="{{ url_for('invoices', status='all', search=search) }}" class="btn btn-sm {% if current_status == 'all' %}btn-primary{% else %}btn-outline-primary{% endif %}">All</a>
+                    <a href="{{ url_for('invoices', status='draft', search=search) }}" class="btn btn-sm {% if current_status == 'draft' %}btn-primary{% else %}btn-outline-primary{% endif %}">Draft</a>
+                    <a href="{{ url_for('invoices', status='pending', search=search) }}" class="btn btn-sm {% if current_status == 'pending' %}btn-primary{% else %}btn-outline-primary{% endif %}">Pending</a>
+                    <a href="{{ url_for('invoices', status='paid', search=search) }}" class="btn btn-sm {% if current_status == 'paid' %}btn-primary{% else %}btn-outline-primary{% endif %}">Paid</a>
+                    <a href="{{ url_for('invoices', status='cancelled', search=search) }}" class="btn btn-sm {% if current_status == 'cancelled' %}btn-primary{% else %}btn-outline-primary{% endif %}">Cancelled</a>
+                </div>
+            </div>
+            {% if search %}
+            <div class="col-md-2">
+                <a href="{{ url_for('invoices', status=current_status) }}" class="btn btn-outline-secondary w-100">Clear</a>
+            </div>
+            {% endif %}
+        </form>
     </div>
 </div>
 
@@ -146,7 +159,7 @@
 <div class="card mt-4">
     <div class="card-header d-flex align-items-center">
         <i class="bi bi-receipt text-secondary me-2"></i>
-        Invoice History ({{ invoices|length }})
+        Invoice History ({{ pagination.total }})
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -263,5 +276,24 @@
         </div>
     </div>
 </div>
+
+<!-- Pagination -->
+{% if pagination.pages > 1 %}
+<nav class="mt-3">
+    <ul class="pagination justify-content-center">
+        <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('invoices', page=1, status=current_status, search=search) }}">&laquo;</a>
+        </li>
+        {% for p in range(1, pagination.pages + 1) %}
+        <li class="page-item {% if p == pagination.page %}active{% endif %}">
+            <a class="page-link" href="{{ url_for('invoices', page=p, status=current_status, search=search) }}">{{ p }}</a>
+        </li>
+        {% endfor %}
+        <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('invoices', page=pagination.pages, status=current_status, search=search) }}">&raquo;</a>
+        </li>
+    </ul>
+</nav>
+{% endif %}
 {% endif %}
 {% endblock %}
