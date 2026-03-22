@@ -1,59 +1,73 @@
-Project Overview
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
 
 A Flask-based Point of Sale (POS) application for managing customers, products, invoices, and inventory. Features include shopping cart, invoice generation, stock tracking, and sales reporting.
-Running the Application
 
+## Running the Application
+
+```bash
 pip install -r requirements.txt
 python app.py
+```
 
-The app runs on http://localhost:5000 with debug mode enabled. Database tables are auto-created on startup.
-Architecture
-Tech Stack
+The app runs on `http://localhost:5000` with debug mode enabled. Database tables are auto-created on startup.
 
-    Framework: Flask with Flask-SQLAlchemy
-    Database: PostgreSQL (localhost:5432, database: product)
-    ORM: SQLAlchemy with explicit relationships and indexes
-    Frontend: Jinja2 templates with Bootstrap 5
+## Architecture
 
-File Structure
+### Tech Stack
+- **Framework**: Flask with Flask-SQLAlchemy
+- **Database**: PostgreSQL (localhost:5432, database: `product`)
+- **ORM**: SQLAlchemy with explicit relationships and indexes
+- **Frontend**: Jinja2 templates with Bootstrap 5
 
+### File Structure
+```
 app.py          # Main Flask application with all routes
 models.py       # SQLAlchemy ORM models (User, Customer, Product, Invoice, InvoiceItem, StockMovement)
 forms.py        # WTForms (currently unused)
 templates/      # Jinja2 HTML templates
+```
 
-Database Models
-Model 	Purpose
-User 	Authentication with roles (admin/user), password hashing
-Customer 	Customer records with name, phone, address
-Product 	Inventory items with type, name, model, color, price, quantity
-Invoice 	Sales transactions linked to customers
-InvoiceItem 	Line items within invoices
-StockMovement 	Audit trail for inventory changes (sales, adjustments, returns)
-Key Patterns
+### Database Models
 
-Authentication: Session-based with @login_required and @admin_required decorators. Passwords hashed with werkzeug.
+| Model | Purpose |
+|-------|---------|
+| User | Authentication with roles (admin/user), password hashing |
+| Customer | Customer records with name, phone, address |
+| Product | Inventory items with type, name, model, color, price, quantity |
+| Invoice | Sales transactions linked to customers |
+| InvoiceItem | Line items within invoices |
+| StockMovement | Audit trail for inventory changes (sales, adjustments, returns) |
 
-Cart: Session-based (session['cart'] as list of {'product_id': int, 'quantity': int}). Validates stock before operations.
+### Key Patterns
 
-Stock Management: Automatic deduction on invoice checkout, returns stock on invoice cancellation/deletion. All movements tracked via StockMovement model.
+**Authentication**: Session-based with `@login_required` and `@admin_required` decorators. Passwords hashed with werkzeug.
 
-Invoice Workflow: Draft → Pending → Paid (or Cancelled). Only draft/pending invoices can be edited.
-Common Tasks
+**Cart**: Session-based (`session['cart']` as list of `{'product_id': int, 'quantity': int}`). Validates stock before operations.
 
-Add a new route: Add @app.route() decorator in app.py with appropriate auth decorator.
+**Stock Management**: Automatic deduction on invoice checkout, returns stock on invoice cancellation/deletion. All movements tracked via `StockMovement` model.
 
-Add a model field: Add to model class in models.py, then run db.drop_all() and db.create_all() (or use migrations).
+**Invoice Workflow**: Draft → Pending → Paid (or Cancelled). Only draft/pending invoices can be edited.
 
-Add a template: Create HTML in templates/ using Bootstrap 5 classes, extend base.html.
-Configuration
+## Common Tasks
+
+**Add a new route**: Add `@app.route()` decorator in app.py with appropriate auth decorator.
+
+**Add a model field**: Add to model class in models.py, then run `db.drop_all()` and `db.create_all()` (or use migrations).
+
+**Add a template**: Create HTML in templates/ using Bootstrap 5 classes, extend `base.html`.
+
+## Configuration
 
 Environment variables (with defaults):
+- `SECRET_KEY`: Flask session secret
+- `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `DB_NAME`: PostgreSQL connection
 
-    SECRET_KEY: Flask session secret
-    DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME: PostgreSQL connection
+Default credentials: `postgres` / `Zaq12wsX` (for localhost)
 
-Default credentials: postgres / Zaq12wsX (for localhost)
-Security Note
+## Security Note
 
 The app has hardcoded credentials and secret key for development only. Before production deployment, move all secrets to environment variables and use strong credentials.
