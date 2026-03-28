@@ -35,6 +35,7 @@
                                 <td>LKR {{ "%.2f"|format(item.product.product_price) }}</td>
                                 <td style="width: 120px;">
                                     <form method="post" action="/cart/update/{{ item.product.product_id }}" class="d-flex">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                         <input type="number" name="quantity" class="form-control form-control-sm" min="1" max="{{ item.product.product_quantity + item.quantity }}" value="{{ item.quantity }}" required>
                                         <button type="submit" class="btn btn-sm btn-outline-primary ms-1">
                                             <i class="bi bi-check"></i>
@@ -64,6 +65,7 @@
             </div>
             <div class="card-body">
                 <form method="post" action="/cart/checkout">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <div class="mb-3">
                         <label class="form-label small text-secondary">Select Customer</label>
                         <select name="customer_id" class="form-select" required>

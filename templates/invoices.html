@@ -84,6 +84,7 @@
                                 </td>
                                 <td style="width: 100px;">
                                     <form method="post" action="/cart/add/{{ p.product_id }}" class="d-flex">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                         <input type="number" name="quantity" class="form-control form-control-sm" min="1" max="{{ p.product_quantity }}" value="1" required>
                                 </td>
                                 <td>
@@ -225,6 +226,7 @@
                                 </div>
                                 <form method="POST" action="{{ url_for('update_invoice_status', invoice_id=inv.invoice_id) }}">
                                     <div class="modal-body">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                         <input type="hidden" name="status" value="paid">
                                         <div class="mb-3">
                                             <label class="form-label">Payment Method</label>
@@ -263,6 +265,7 @@
                                 <div class="modal-footer">
                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No, Keep It</button>
                                     <form method="POST" action="{{ url_for('update_invoice_status', invoice_id=inv.invoice_id) }}">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                         <input type="hidden" name="status" value="cancelled">
                                         <button type="submit" class="btn btn-danger">Yes, Cancel Invoice</button>
                                     </form>

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+    <changeSet id="005-create-invoice-table" author="product-app">
+        <createTable tableName="invoice">
+            <column name="invoice_id" type="SERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="invoice_number" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="customer_details" type="INTEGER">
+                <constraints nullable="false" foreignKeyDefinition="customer(customer_id)"/>
+            </column>
+            <column name="status" type="VARCHAR(50)" defaultValue="draft"/>
+            <column name="subtotal" type="NUMERIC(10,2)" defaultValue="0"/>
+            <column name="tax_rate" type="NUMERIC(5,2)" defaultValue="0"/>
+            <column name="tax_amount" type="NUMERIC(10,2)" defaultValue="0"/>
+            <column name="discount_amount" type="NUMERIC(10,2)" defaultValue="0"/>
+            <column name="total" type="NUMERIC(10,2)" defaultValue="0"/>
+            <column name="payment_method" type="VARCHAR(50)"/>
+            <column name="payment_date" type="TIMESTAMP"/>
+            <column name="payment_reference" type="VARCHAR(255)"/>
+            <column name="notes" type="TEXT"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+        
+        <createIndex tableName="invoice" indexName="idx_invoice_customer">
+            <column name="customer_details"/>
+        </createIndex>
+        
+        <createIndex tableName="invoice" indexName="idx_invoice_number">
+            <column name="invoice_number"/>
+        </createIndex>
+        
+        <createIndex tableName="invoice" indexName="idx_invoice_status">
+            <column name="status"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

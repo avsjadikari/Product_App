@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+    <changeSet id="004-create-stock-movement-table" author="product-app">
+        <createTable tableName="stock_movement">
+            <column name="movement_id" type="SERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="product_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyDefinition="product(product_id)"/>
+            </column>
+            <column name="movement_type" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="quantity" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reference_type" type="VARCHAR(50)"/>
+            <column name="reference_id" type="INTEGER"/>
+            <column name="notes" type="TEXT"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="created_by" type="VARCHAR(255)"/>
+        </createTable>
+        
+        <createIndex tableName="stock_movement" indexName="idx_stock_movement_product">
+            <column name="product_id"/>
+        </createIndex>
+        
+        <createIndex tableName="stock_movement" indexName="idx_stock_movement_type">
+            <column name="movement_type"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

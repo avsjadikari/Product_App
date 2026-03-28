@@ -1,71 +1,451 @@
+# Product App - Point of Sale Management System
 
+A Flask-based Point of Sale (POS) application for managing customers, products, invoices, and inventory. Features include shopping cart, invoice generation, stock tracking, sales reporting, and REST API.
 
-## Project Overview
+## Table of Contents
 
-A Flask-based Point of Sale (POS) application for managing customers, products, invoices, and inventory. Features include shopping cart, invoice generation, stock tracking, and sales reporting.
+- [Features](#features)
+- [Technology Stack](#technology-stack)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Setup Methods](#setup-methods)
+  - [Method 1: Setup Wizard (Recommended)](#method-1-setup-wizard-recommended)
+  - [Method 2: Environment Variables](#method-2-environment-variables)
+  - [Method 3: Liquibase (External Database)](#method-3-liquibase-external-database)
+- [Running the Application](#running-the-application)
+- [Default Credentials](#default-credentials)
+- [Configuration](#configuration)
+- [API Documentation](#api-documentation)
+- [Project Structure](#project-structure)
+- [Security Features](#security-features)
+- [Development](#development)
+- [Troubleshooting](#troubleshooting)
+
+---
+
+## Features
+
+- **User Management**: Role-based access control (Admin/User)
+- **Customer Management**: Add, edit, view, soft-delete customers
+- **Product Management**: Product inventory with categories, pricing, stock levels
+- **Shopping Cart**: Session-based cart with stock validation
+- **Invoice Management**: Create, edit, print invoices with tax/discount
+- **Stock Management**: Automatic stock tracking with movement history
+- **Reports**: Sales reports and stock valuation reports
+- **CSV Export**: Export products, customers, invoices to CSV
+- **REST API**: JWT-authenticated API for mobile apps
+- **Database Setup Wizard**: First-time setup via web interface
+
+---
+
+## Technology Stack
+
+| Component | Technology |
+|-----------|------------|
+| Web Framework | Flask 3.x |
+| ORM | Flask-SQLAlchemy |
+| Database | PostgreSQL |
+| Forms | Flask-WTF |
+| Authentication | Werkzeug (password hashing) |
+| API Auth | JWT (PyJWT) |
+| Database Migrations | Flask-Migrate |
+| UI | Bootstrap 5 + Jinja2 |
+| Testing | pytest |
+
+---
+
+## Prerequisites
+
+- Python 3.10+
+- PostgreSQL 14+
+- pip package manager
+
+---
+
+## Quick Start
+
+```bash
+# 1. Clone or download the project
+cd Product_App
+
+# 2. Create virtual environment (recommended)
+python -m venv venv
+venv\Scripts\activate  # Windows
+# source venv/bin/activate  # Linux/Mac
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Run the application
+python app.py
+
+# 5. Open browser to http://localhost:5000
+# Follow the setup wizard to configure database
+```
+
+---
+
+## Setup Methods
+
+### Method 1: Setup Wizard (Recommended)
+
+1. Run the application: `python app.py`
+2. Open browser to `http://localhost:5000`
+3. You will be redirected to `/setup`
+4. Enter database connection details:
+   - **Host**: Your PostgreSQL server (e.g., `localhost`)
+   - **Port**: PostgreSQL port (default: `5432`)
+   - **Database Name**: Name of database to create/use
+   - **Username**: PostgreSQL username
+   - **Password**: PostgreSQL password
+   - **Secret Key**: Application secret key for sessions
+5. Click **Test Connection** to verify
+6. Click **Save & Continue**
+7. Login with default credentials
+
+### Method 2: Environment Variables
+
+Create a `.env` file in the project root:
+
+```env
+# Database Configuration
+DB_USER=postgres
+DB_PASSWORD=your_password
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=product
+
+# Application Settings
+SECRET_KEY=your-secure-secret-key-change-in-production
+FLASK_DEBUG=True
+FLASK_ENV=development
+
+# Optional Settings
+DEFAULT_TAX_RATE=0
+ITEMS_PER_PAGE=20
+LOG_LEVEL=INFO
+
+# Default Users (change on first login)
+DEFAULT_ADMIN_USER=admin
+DEFAULT_ADMIN_PASSWORD=admin123
+DEFAULT_USER_USER=user
+DEFAULT_USER_PASSWORD=user123
+
+# Security Settings
+PASSWORD_MIN_LENGTH=8
+PASSWORD_REQUIRE_UPPERCASE=true
+PASSWORD_REQUIRE_LOWERCASE=true
+PASSWORD_REQUIRE_DIGIT=true
+PASSWORD_REQUIRE_SPECIAL=true
+LOGIN_RATE_LIMIT=5
+LOGIN_RATE_WINDOW=300
+
+# JWT Settings (for API)
+JWT_SECRET_KEY=your-jwt-secret-key
+JWT_ACCESS_TOKEN_EXPIRES=3600
+```
+
+Then run: `python app.py`
+
+### Method 3: Liquibase (External Database)
+
+For production or external database management:
+
+```bash
+# 1. Create the database
+createdb product
+
+# 2. Install Liquibase (if not installed)
+# Download from: https://www.liquibase.org/download
+
+# 3. Run migrations
+liquibase --url="jdbc:postgresql://localhost:5432/product" \
+           --username=postgres \
+           --password=your_password \
+           --changelog-file=liquibase/master.xml \
+           update
+
+# 4. Manually insert default users (or use database reset feature)
+```
+
+---
 
 ## Running the Application
 
+### Development
 ```bash
-pip install -r requirements.txt
+python app.py
+```
+Runs on `http://localhost:5000` with debug mode enabled.
+
+### Production
+```bash
+# Set environment variables
+export FLASK_DEBUG=False
+export FLASK_ENV=production
+
+# Run with production server
 python app.py
 ```
 
-The app runs on `http://localhost:5000` with debug mode enabled. Database tables are auto-created on startup.
-
-## Architecture
-
-### Tech Stack
-- **Framework**: Flask with Flask-SQLAlchemy
-- **Database**: PostgreSQL (localhost:5432, database: `product`)
-- **ORM**: SQLAlchemy with explicit relationships and indexes
-- **Frontend**: Jinja2 templates with Bootstrap 5
-
-### File Structure
-```
-app.py          # Main Flask application with all routes
-models.py       # SQLAlchemy ORM models (User, Customer, Product, Invoice, InvoiceItem, StockMovement)
-forms.py        # WTForms (currently unused)
-templates/      # Jinja2 HTML templates
+### Using Gunicorn (Recommended for Production)
+```bash
+pip install gunicorn
+gunicorn -w 4 -b 0.0.0.0:5000 app:app
 ```
 
-### Database Models
+---
 
-| Model | Purpose |
-|-------|---------|
-| User | Authentication with roles (admin/user), password hashing |
-| Customer | Customer records with name, phone, address |
-| Product | Inventory items with type, name, model, color, price, quantity |
-| Invoice | Sales transactions linked to customers |
-| InvoiceItem | Line items within invoices |
-| StockMovement | Audit trail for inventory changes (sales, adjustments, returns) |
+## Default Credentials
 
-### Key Patterns
+| Role | Username | Password |
+|------|----------|----------|
+| Admin | `admin` | `admin123` |
+| User | `user` | `user123` |
 
-**Authentication**: Session-based with `@login_required` and `@admin_required` decorators. Passwords hashed with werkzeug.
+> **Important**: On first login, users will be prompted to change their password.
 
-**Cart**: Session-based (`session['cart']` as list of `{'product_id': int, 'quantity': int}`). Validates stock before operations.
-
-**Stock Management**: Automatic deduction on invoice checkout, returns stock on invoice cancellation/deletion. All movements tracked via `StockMovement` model.
-
-**Invoice Workflow**: Draft → Pending → Paid (or Cancelled). Only draft/pending invoices can be edited.
-
-## Common Tasks
-
-**Add a new route**: Add `@app.route()` decorator in app.py with appropriate auth decorator.
-
-**Add a model field**: Add to model class in models.py, then run `db.drop_all()` and `db.create_all()` (or use migrations).
-
-**Add a template**: Create HTML in templates/ using Bootstrap 5 classes, extend `base.html`.
+---
 
 ## Configuration
 
-Environment variables (with defaults):
-- `SECRET_KEY`: Flask session secret
-- `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `DB_NAME`: PostgreSQL connection
+### Environment Variables
 
-Default credentials: `postgres` / `Zaq12wsX` (for localhost)
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DB_HOST` | localhost | PostgreSQL host |
+| `DB_PORT` | 5432 | PostgreSQL port |
+| `DB_NAME` | product | Database name |
+| `DB_USER` | postgres | Database username |
+| `DB_PASSWORD` | - | Database password |
+| `SECRET_KEY` | dev-secret-key... | Flask session secret |
+| `FLASK_DEBUG` | False | Enable debug mode |
+| `FLASK_ENV` | development | Environment |
+| `DEFAULT_TAX_RATE` | 0 | Default tax percentage |
+| `ITEMS_PER_PAGE` | 20 | Pagination size |
+| `LOG_LEVEL` | INFO | Logging level |
+| `JWT_SECRET_KEY` | jwt-secret... | JWT signing key |
+| `JWT_ACCESS_TOKEN_EXPIRES` | 3600 | Token expiry (seconds) |
+| `PASSWORD_MIN_LENGTH` | 8 | Minimum password length |
+| `PASSWORD_REQUIRE_UPPERCASE` | true | Require uppercase |
+| `PASSWORD_REQUIRE_LOWERCASE` | true | Require lowercase |
+| `PASSWORD_REQUIRE_DIGIT` | true | Require digit |
+| `PASSWORD_REQUIRE_SPECIAL` | true | Require special char |
+| `LOGIN_RATE_LIMIT` | 5 | Max login attempts |
+| `LOGIN_RATE_WINDOW` | 300 | Rate limit window (seconds) |
 
-## Security Note
+---
 
-The app has hardcoded credentials and secret key for development only. Before production deployment, move all secrets to environment variables and use strong credentials.
+## API Documentation
+
+### Authentication
+
+```bash
+# Login to get JWT token
+curl -X POST http://localhost:5000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "admin123"}'
+
+# Response
+{
+  "data": {
+    "token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+    "user": {"id": 1, "username": "admin", "role": "admin"},
+    "expires_in": 3600
+  },
+  "success": true
+}
+```
+
+### API Endpoints
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/v1/health` | No | Health check |
+| POST | `/api/v1/auth/login` | No | Get JWT token |
+| POST | `/api/v1/auth/refresh` | JWT | Refresh token |
+| GET | `/api/v1/products` | JWT | List products |
+| GET | `/api/v1/products/<id>` | JWT | Get product |
+| GET | `/api/v1/customers` | JWT | List customers |
+| GET | `/api/v1/customers/<id>` | JWT | Get customer |
+| GET | `/api/v1/invoices` | JWT | List invoices |
+| GET | `/api/v1/invoices/<id>` | JWT | Get invoice |
+| GET | `/api/v1/stock` | JWT | Stock levels |
+| GET | `/api/v1/stock/movements` | JWT | Movement history |
+| GET | `/api/v1/dashboard` | JWT | Dashboard stats |
+
+### Using the API
+
+```bash
+# Set token variable
+TOKEN="your-jwt-token"
+
+# Get products
+curl http://localhost:5000/api/v1/products \
+  -H "Authorization: Bearer $TOKEN"
+
+# With pagination
+curl "http://localhost:5000/api/v1/products?page=1&per_page=20" \
+  -H "Authorization: Bearer $TOKEN"
+
+# With search
+curl "http://localhost:5000/api/v1/products?search=laptop" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+---
+
+## Project Structure
+
+```
+Product_App/
+├── app.py                  # Main Flask application
+├── models.py               # SQLAlchemy ORM models
+├── forms.py               # WTForms
+├── config.py              # Configuration management
+├── api.py                 # REST API blueprint
+├── utils.py               # Utility functions
+├── requirements.txt       # Python dependencies
+├── pytest.ini            # Pytest configuration
+│
+├── templates/            # Jinja2 templates
+│   ├── base.html        # Base template
+│   ├── login.html       # Login page
+│   ├── setup.html      # Database setup wizard
+│   └── ...
+│
+├── tests/               # Test suite
+│   ├── conftest.py     # Pytest fixtures
+│   ├── test_models.py
+│   ├── test_forms.py
+│   ├── test_routes.py
+│   └── test_api.py
+│
+├── liquibase/           # Database migrations
+│   ├── master.xml
+│   └── changelogs/
+│       ├── 001-users.xml
+│       ├── 002-customers.xml
+│       ├── 003-products.xml
+│       ├── 004-stock-movements.xml
+│       ├── 005-invoices.xml
+│       └── 006-invoice-items.xml
+│
+├── logs/                # Application logs
+└── config.json          # Runtime config (auto-generated)
+```
+
+---
+
+## Security Features
+
+- **Password Hashing**: Werkzeug's PBKDF2+SHA256
+- **Session Security**: Secure, HTTP-only cookies
+- **CSRF Protection**: Flask-WTF CSRFProtect on all POST forms (including AJAX)
+- **Rate Limiting**: IP-based login protection
+- **Input Validation**: Type checking and sanitization
+- **SQL Injection Prevention**: Parameterized queries via SQLAlchemy ORM + input validation
+- **JWT Authentication**: Token-based API security
+- **Audit Logging**: All user actions logged
+- **Decimal Precision**: NUMERIC(10,2) for money fields to prevent floating-point errors
+
+---
+
+## Development
+
+### Running Tests
+
+```bash
+# Install test dependencies
+pip install pytest pytest-flask
+
+# Run all tests
+pytest
+
+# Run specific test file
+pytest tests/test_models.py -v
+
+# Run with coverage
+pytest --cov=. --cov-report=html
+```
+
+### Code Style
+
+- Follows PEP 8 guidelines
+- Maximum line length: 100 characters
+- Type hints on functions
+- Docstrings on complex functions
+
+### Database Migrations
+
+```bash
+# Initialize migrations
+flask db init
+
+# Create migration
+flask db migrate -m "description"
+
+# Apply migrations
+flask db upgrade
+
+# Rollback
+flask db downgrade
+```
+
+---
+
+## Troubleshooting
+
+### Database Connection Failed
+
+1. Check PostgreSQL is running: `pg_isready`
+2. Verify credentials in `.env` or setup wizard
+3. Ensure database exists: `createdb product`
+4. Check firewall allows port 5432
+
+### Import Errors
+
+```bash
+# Reinstall dependencies
+pip install -r requirements.txt
+```
+
+### Session Issues
+
+```bash
+# Clear browser cookies
+# Or delete config.json to re-run setup wizard
+```
+
+### Port Already in Use
+
+```bash
+# Find process using port 5000
+netstat -ano | findstr :5000
+
+# Kill process
+taskkill /PID <PID> /F
+
+# Or use different port
+set FLASK_PORT=5001
+python app.py
+```
+
+### Reset Database
+
+```bash
+# Via API (requires admin login)
+curl -X POST http://localhost:5000/database/reset
+
+# Or delete config.json and re-run setup wizard
+```
+
+---
+
+## License
+
+MIT License
+
+## Support
+
+For issues and questions, please open a GitHub issue.

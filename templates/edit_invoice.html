@@ -70,6 +70,7 @@
             </div>
             <div class="card-body">
                 <form method="POST" action="{{ url_for('add_invoice_item', invoice_id=invoice.invoice_id) }}" class="row g-3 align-items-end">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <div class="col-md-5">
                         <label class="form-label">Product</label>
                         <select name="product_id" class="form-select" required>
@@ -114,6 +115,7 @@
             </div>
             <div class="card-body">
                 <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <div class="mb-3">
                         <label class="form-label">Tax Rate (%)</label>
                         <input type="number" name="tax_rate" class="form-control" step="0.01" min="0" value="{{ invoice.tax_rate }}" {% if not invoice.can_edit %}readonly{% endif %}>
@@ -159,6 +161,7 @@
             <div class="card-body">
                 {% if invoice.status == 'draft' %}
                 <form method="POST" action="{{ url_for('update_invoice_status', invoice_id=invoice.invoice_id) }}" class="mb-2">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <input type="hidden" name="status" value="pending">
                     <button type="submit" class="btn btn-warning w-100">Mark as Pending</button>
                 </form>
@@ -172,6 +175,7 @@
                 
                 {% if invoice.can_cancel %}
                 <form method="POST" action="{{ url_for('update_invoice_status', invoice_id=invoice.invoice_id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <input type="hidden" name="status" value="cancelled">
                     <button type="submit" class="btn btn-outline-danger w-100" onclick="return confirm('Cancel invoice and restore stock?')">
                         <i class="bi bi-x-circle me-1"></i> Cancel Invoice
@@ -194,6 +198,7 @@
             </div>
             <form method="POST" action="{{ url_for('update_invoice_status', invoice_id=invoice.invoice_id) }}">
                 <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <input type="hidden" name="status" value="paid">
                     <div class="mb-3">
                         <label class="form-label">Payment Method</label>

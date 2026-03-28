@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+    <changeSet id="003-create-product-table" author="product-app">
+        <createTable tableName="product">
+            <column name="product_id" type="SERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="product_type" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="product_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="product_model" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="product_color" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="product_price" type="NUMERIC(10,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="product_quantity" type="INTEGER" defaultValue="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="low_stock_threshold" type="INTEGER" defaultValue="5"/>
+            <column name="is_active" type="BOOLEAN" defaultValue="true"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+        
+        <createIndex tableName="product" indexName="idx_product_name">
+            <column name="product_name"/>
+        </createIndex>
+        
+        <createIndex tableName="product" indexName="idx_product_type">
+            <column name="product_type"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

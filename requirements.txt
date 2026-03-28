@@ -1,7 +1,11 @@
 flask
 flask_sqlalchemy
+flask_migrate
 psycopg2-binary
 wtforms
 flask-wtf
 werkzeug
 python-dotenv
+pyjwt
+pytest
+pytest-flask

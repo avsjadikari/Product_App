@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="ExternalFile">
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+    <changeSet id="006-create-invoice-item-table" author="product-app">
+        <createTable tableName="invoice_item">
+            <column name="item_id" type="SERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="invoice_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyDefinition="invoice(invoice_id)"/>
+            </column>
+            <column name="product_details" type="INTEGER">
+                <constraints nullable="false" foreignKeyDefinition="product(product_id)"/>
+            </column>
+            <column name="quantity" type="INTEGER" defaultValue="1">
+                <constraints nullable="false"/>
+            </column>
+            <column name="unit_price" type="NUMERIC(10,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="discount_percent" type="NUMERIC(5,2)" defaultValue="0"/>
+            <column name="discount_amount" type="NUMERIC(10,2)" defaultValue="0"/>
+            <column name="total" type="NUMERIC(10,2)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        
+        <createIndex tableName="invoice_item" indexName="idx_invoice_item_invoice">
+            <column name="invoice_id"/>
+        </createIndex>
+        
+        <createIndex tableName="invoice_item" indexName="idx_invoice_item_product">
+            <column name="product_details"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>
