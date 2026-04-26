@@ -8,7 +8,7 @@ from functools import wraps
 from typing import Any, Callable, Optional
 
 import jwt
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, render_template_string
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import check_password_hash
 
@@ -16,6 +16,519 @@ from models import db, User, Product, Customer, Invoice, InvoiceItem, StockMovem
 from config import Config
 
 api = Blueprint("api", __name__, url_prefix="/api/v1")
+
+SWAGGER_UI_HTML = '''
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Product App API Documentation</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.11.0/swagger-ui.css">
+    <style>
+        body { margin: 0; padding: 0; }
+        .swagger-ui .topbar { display: none; }
+        .swagger-ui .info .title { font-size: 2.5rem; }
+    </style>
+</head>
+<body>
+    <div id="swagger-ui"></div>
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.11.0/swagger-ui-bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.11.0/swagger-ui-standalone-preset.js"></script>
+    <script>
+        window.onload = function() {
+            window.ui = SwaggerUIBundle({
+                url: "/api/v1/openapi.json",
+                dom_id: "#swagger-ui",
+                deepLinking: true,
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIStandalonePreset
+                ],
+                layout: "StandaloneLayout",
+                docExpansion: "list"
+            });
+        };
+    </script>
+</body>
+</html>
+'''
+
+OPENAPI_SPEC = {
+    "openapi": "3.0.3",
+    "info": {
+        "title": "Product App API",
+        "description": "RESTful API for the POS Application. Provides endpoints for managing products, customers, invoices, and stock. All endpoints except `/health` and `/auth/login` require JWT authentication.",
+        "version": "1.0.0",
+        "contact": {
+            "name": "API Support",
+            "email": "support@productapp.local"
+        }
+    },
+    "servers": [
+        {
+            "url": "/api/v1",
+            "description": "Current API version"
+        }
+    ],
+    "components": {
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
+                "description": "JWT token obtained from /auth/login endpoint"
+            }
+        },
+        "schemas": {
+            "Error": {
+                "type": "object",
+                "properties": {
+                    "success": {"type": "boolean", "example": False},
+                    "error": {"type": "string"},
+                    "code": {"type": "string"}
+                }
+            },
+            "Product": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer"},
+                    "name": {"type": "string"},
+                    "type": {"type": "string"},
+                    "model": {"type": "string"},
+                    "color": {"type": "string"},
+                    "price": {"type": "number", "format": "float"},
+                    "quantity": {"type": "integer"},
+                    "low_stock_threshold": {"type": "integer"},
+                    "is_low_stock": {"type": "boolean"}
+                }
+            },
+            "Customer": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer"},
+                    "name": {"type": "string"},
+                    "phone": {"type": "string"},
+                    "email": {"type": "string"},
+                    "address": {"type": "string"}
+                }
+            },
+            "Invoice": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer"},
+                    "number": {"type": "string"},
+                    "customer": {"type": "string"},
+                    "status": {"type": "string", "enum": ["draft", "pending", "paid", "cancelled"]},
+                    "total": {"type": "number", "format": "float"},
+                    "subtotal": {"type": "number", "format": "float"},
+                    "tax_amount": {"type": "number", "format": "float"},
+                    "discount_amount": {"type": "number", "format": "float"},
+                    "created_at": {"type": "string", "format": "date-time"}
+                }
+            },
+            "LoginRequest": {
+                "type": "object",
+                "required": ["username", "password"],
+                "properties": {
+                    "username": {"type": "string"},
+                    "password": {"type": "string", "format": "password"}
+                }
+            },
+            "LoginResponse": {
+                "type": "object",
+                "properties": {
+                    "success": {"type": "boolean"},
+                    "data": {
+                        "type": "object",
+                        "properties": {
+                            "token": {"type": "string"},
+                            "user": {"type": "object"},
+                            "expires_in": {"type": "integer"}
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "paths": {
+        "/health": {
+            "get": {
+                "tags": ["Health"],
+                "summary": "Health check endpoint",
+                "description": "Public endpoint to check API and database status",
+                "responses": {
+                    "200": {
+                        "description": "Service is healthy",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {"type": "boolean"},
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "status": {"type": "string"},
+                                                "database": {"type": "string"},
+                                                "version": {"type": "string"}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service unavailable",
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/Error"}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/login": {
+            "post": {
+                "tags": ["Authentication"],
+                "summary": "Authenticate and get JWT token",
+                "description": "Login with username and password to receive JWT token",
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "application/json": {
+                            "schema": {"$ref": "#/components/schemas/LoginRequest"}
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Login successful",
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/LoginResponse"}
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Missing credentials",
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/Error"}
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid credentials",
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/Error"}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/refresh": {
+            "post": {
+                "tags": ["Authentication"],
+                "summary": "Refresh JWT token",
+                "security": [{"bearerAuth": []}],
+                "responses": {
+                    "200": {
+                        "description": "Token refreshed successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {"type": "boolean"},
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "token": {"type": "string"},
+                                                "expires_in": {"type": "integer"}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid or expired token",
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/Error"}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/products": {
+            "get": {
+                "tags": ["Products"],
+                "summary": "Get all products",
+                "security": [{"bearerAuth": []}],
+                "parameters": [
+                    {"name": "page", "in": "query", "schema": {"type": "integer", "default": 1}},
+                    {"name": "per_page", "in": "query", "schema": {"type": "integer", "default": 20}},
+                    {"name": "search", "in": "query", "schema": {"type": "string"}},
+                    {"name": "type", "in": "query", "schema": {"type": "string"}},
+                    {"name": "low_stock", "in": "query", "schema": {"type": "boolean"}}
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of products",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {"type": "boolean"},
+                                        "data": {"type": "array", "items": {"$ref": "#/components/schemas/Product"}},
+                                        "pagination": {"type": "object"}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/products/{product_id}": {
+            "get": {
+                "tags": ["Products"],
+                "summary": "Get a single product",
+                "security": [{"bearerAuth": []}],
+                "parameters": [
+                    {"name": "product_id", "in": "path", "required": True, "schema": {"type": "integer"}}
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Product details",
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/Product"}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/customers": {
+            "get": {
+                "tags": ["Customers"],
+                "summary": "Get all customers",
+                "security": [{"bearerAuth": []}],
+                "parameters": [
+                    {"name": "page", "in": "query", "schema": {"type": "integer", "default": 1}},
+                    {"name": "per_page", "in": "query", "schema": {"type": "integer", "default": 20}},
+                    {"name": "search", "in": "query", "schema": {"type": "string"}}
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of customers",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {"type": "boolean"},
+                                        "data": {"type": "array", "items": {"$ref": "#/components/schemas/Customer"}},
+                                        "pagination": {"type": "object"}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/customers/{customer_id}": {
+            "get": {
+                "tags": ["Customers"],
+                "summary": "Get a single customer",
+                "security": [{"bearerAuth": []}],
+                "parameters": [
+                    {"name": "customer_id", "in": "path", "required": True, "schema": {"type": "integer"}}
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Customer details",
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/Customer"}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/invoices": {
+            "get": {
+                "tags": ["Invoices"],
+                "summary": "Get all invoices",
+                "security": [{"bearerAuth": []}],
+                "parameters": [
+                    {"name": "status", "in": "query", "schema": {"type": "string", "default": "all"}},
+                    {"name": "page", "in": "query", "schema": {"type": "integer", "default": 1}},
+                    {"name": "per_page", "in": "query", "schema": {"type": "integer", "default": 20}}
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of invoices",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {"type": "boolean"},
+                                        "data": {"type": "array", "items": {"$ref": "#/components/schemas/Invoice"}},
+                                        "pagination": {"type": "object"}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/invoices/{invoice_id}": {
+            "get": {
+                "tags": ["Invoices"],
+                "summary": "Get a single invoice with items",
+                "security": [{"bearerAuth": []}],
+                "parameters": [
+                    {"name": "invoice_id", "in": "path", "required": True, "schema": {"type": "integer"}}
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Invoice details with items",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {"type": "boolean"},
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {"type": "integer"},
+                                                "number": {"type": "string"},
+                                                "customer": {"type": "string"},
+                                                "status": {"type": "string"},
+                                                "items": {"type": "array"}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/stock": {
+            "get": {
+                "tags": ["Stock"],
+                "summary": "Get stock levels",
+                "security": [{"bearerAuth": []}],
+                "parameters": [
+                    {"name": "page", "in": "query", "schema": {"type": "integer", "default": 1}},
+                    {"name": "per_page", "in": "query", "schema": {"type": "integer", "default": 50}}
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Stock levels",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {"type": "boolean"},
+                                        "data": {"type": "array"}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/stock/movements": {
+            "get": {
+                "tags": ["Stock"],
+                "summary": "Get stock movement history",
+                "security": [{"bearerAuth": []}],
+                "parameters": [
+                    {"name": "product_id", "in": "query", "schema": {"type": "integer"}},
+                    {"name": "type", "in": "query", "schema": {"type": "string"}},
+                    {"name": "page", "in": "query", "schema": {"type": "integer", "default": 1}},
+                    {"name": "per_page", "in": "query", "schema": {"type": "integer", "default": 50}}
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Stock movement history",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {"type": "boolean"},
+                                        "data": {"type": "array"}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/dashboard": {
+            "get": {
+                "tags": ["Dashboard"],
+                "summary": "Get dashboard statistics",
+                "security": [{"bearerAuth": []}],
+                "responses": {
+                    "200": {
+                        "description": "Dashboard stats",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {"type": "boolean"},
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "stats": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "customers": {"type": "integer"},
+                                                        "products": {"type": "integer"},
+                                                        "invoices": {"type": "integer"},
+                                                        "pending_invoices": {"type": "integer"},
+                                                        "paid_invoices": {"type": "integer"},
+                                                        "total_revenue": {"type": "number"},
+                                                        "low_stock_alerts": {"type": "integer"}
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 import logging
 
@@ -570,6 +1083,18 @@ def get_dashboard():
             }
         }
     )
+
+
+@api.route("/swagger", methods=["GET"])
+def swagger_ui():
+    """Serve Swagger UI."""
+    return render_template_string(SWAGGER_UI_HTML)
+
+
+@api.route("/openapi.json", methods=["GET"])
+def openapi_spec():
+    """Serve OpenAPI specification."""
+    return jsonify(OPENAPI_SPEC)
 
 
 @api.route("/docs", methods=["GET"])

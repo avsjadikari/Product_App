@@ -91,7 +91,32 @@ db.init_app(app)
 # Initialize CSRF protection
 csrf = CSRFProtect(app)
 
-app_logger = logging.getLogger(__name__)
+# Initialize config (sets up logging)
+Config.init_app(app)
+
+import logging
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+
+log_dir = Path(__file__).parent / "logs"
+log_dir.mkdir(exist_ok=True)
+log_path = log_dir / "app.log"
+
+file_handler = RotatingFileHandler(log_path, maxBytes=10*1024*1024, backupCount=5)
+file_handler.setLevel(logging.INFO)
+formatter = logging.Formatter(
+    "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+file_handler.setFormatter(formatter)
+
+logging.getLogger("app").handlers = []
+app_logger = logging.getLogger("app")
+app_logger.addHandler(file_handler)
+app_logger.setLevel(logging.INFO)
+app_logger.propagate = False
+
+app_logger.info("=== Logging initialized successfully! ===")
 
 # Initialize _last_config_uri from startup config
 config_file = Path(__file__).parent / "config.json"
@@ -173,6 +198,7 @@ def log_user_action(action: str, details: Optional[str] = None) -> None:
         log_msg += f" | DETAILS: {details}"
 
     app_logger.info(log_msg)
+    print(f"[AUDIT] {log_msg}")
 
 
 def log_error(error_type: str, error_message: str) -> None:
@@ -778,6 +804,7 @@ def add_user():
     user.set_password(password)
     db.session.add(user)
     db.session.commit()
+    log_user_action("USER_CREATE", f"Created user: {username} with role: {role}")
     flash(f"User {username} created successfully!", "success")
     return redirect(url_for("users"))
 
@@ -792,6 +819,7 @@ def delete_user(id):
     username = user.username
     user.is_active = False
     db.session.commit()
+    log_user_action("USER_DELETE", f"Deactivated user: {username}")
     flash(f"User {username} deleted successfully!", "success")
     return redirect(url_for("users"))
 
@@ -813,6 +841,104 @@ def reset_database():
         flash(f"Error resetting database: {str(e)}", "danger")
 
     return redirect(url_for("login"))
+
+
+@app.route("/audit-logs")
+@admin_required
+def audit_logs():
+    """Display audit logs from the log file."""
+    from datetime import datetime, timedelta
+    from pathlib import Path
+
+    date_range = request.args.get("date_range", "7days")
+    action_type = request.args.get("action_type", "")
+    user_filter = request.args.get("user", "")
+
+    log_file = Path(__file__).parent / "logs" / "app.log"
+    logs = []
+
+    date_range_labels = {
+        "today": "Today",
+        "7days": "Last 7 Days",
+        "30days": "Last 30 Days",
+        "all": "All Time"
+    }
+    date_range_label = date_range_labels.get(date_range, "All Time")
+
+    if log_file.exists():
+        try:
+            with open(log_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    if "USER:" not in line:
+                        continue
+
+                    parts = line.strip().split(" | ")
+                    if len(parts) < 5:
+                        continue
+
+                    try:
+                        timestamp_str = parts[0]
+                        log_time = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
+                    except ValueError:
+                        continue
+
+                    if date_range != "all":
+                        now = datetime.now()
+                        if date_range == "today":
+                            start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+                        elif date_range == "7days":
+                            start_date = now - timedelta(days=7)
+                        elif date_range == "30days":
+                            start_date = now - timedelta(days=30)
+                        else:
+                            start_date = datetime.min
+
+                        if log_time < start_date:
+                            continue
+
+                    user_part = parts[3] if len(parts) > 3 else ""
+                    user = user_part.replace("USER: ", "") if "USER:" in user_part else "Unknown"
+
+                    action_part = parts[4] if len(parts) > 4 else ""
+                    action = action_part.replace("ACTION: ", "") if "ACTION:" in action_part else "Unknown"
+
+                    ip_part = parts[5] if len(parts) > 5 else ""
+                    ip = ip_part.replace("IP: ", "") if "IP:" in ip_part else "Unknown"
+
+                    details = ""
+                    if "DETAILS:" in line:
+                        details_part = line.split("DETAILS: ")[1].strip() if "DETAILS: " in line else ""
+                        details = details_part
+
+                    if action_type and action_type not in action:
+                        continue
+                    if user_filter and user_filter != user:
+                        continue
+
+                    logs.append({
+                        "timestamp": log_time.strftime("%Y-%m-%d %H:%M:%S"),
+                        "username": user,
+                        "action": action,
+                        "ip": ip,
+                        "details": details
+                    })
+
+        except Exception as e:
+            app_logger.error(f"Error reading audit logs: {str(e)}")
+
+    logs.reverse()
+
+    users = User.query.all()
+
+    return render_template(
+        "audit_logs.html",
+        logs=logs[:200],
+        users=users,
+        date_range=date_range,
+        action_type=action_type,
+        user_filter=user_filter,
+        date_range_label=date_range_label
+    )
 
 
 @app.route("/customers")
@@ -855,16 +981,16 @@ def add_customer():
     form = CustomerForm()
     if form.validate_on_submit():
         try:
-            db.session.add(
-                Customer(
-                    first_name=form.first_name.data,
-                    last_name=form.last_name.data,
-                    phone_number=form.phone_number.data,
-                    customer_address=form.customer_address.data,
-                    email=form.email.data,
-                )
+            customer = Customer(
+                first_name=form.first_name.data,
+                last_name=form.last_name.data,
+                phone_number=form.phone_number.data,
+                customer_address=form.customer_address.data,
+                email=form.email.data,
             )
+            db.session.add(customer)
             db.session.commit()
+            log_user_action("CUSTOMER_CREATE", f"Created customer: {customer.full_name}")
             flash("Customer added successfully!", "success")
         except Exception as e:
             db.session.rollback()
@@ -885,6 +1011,7 @@ def edit_customer(id):
     if form.validate_on_submit():
         form.populate_obj(customer)
         db.session.commit()
+        log_user_action("CUSTOMER_UPDATE", f"Updated customer: {customer.full_name}")
         flash("Customer updated successfully!", "success")
         return redirect(url_for("customers"))
     return render_template("edit_customer.html", customer=customer, form=form)
@@ -906,8 +1033,10 @@ def view_customer(id):
 @admin_required
 def delete_customer(id):
     customer = Customer.query.get_or_404(id)
+    customer_name = customer.full_name
     customer.is_active = False
     db.session.commit()
+    log_user_action("CUSTOMER_DELETE", f"Deleted customer: {customer_name}")
     flash("Customer deleted successfully!", "success")
     return redirect(url_for("customers"))
 
@@ -961,18 +1090,18 @@ def add_product():
     form = ProductForm()
     if form.validate_on_submit():
         try:
-            db.session.add(
-                Product(
-                    product_type=form.product_type.data,
-                    product_name=form.product_name.data,
-                    product_model=form.product_model.data,
-                    product_color=form.product_color.data,
-                    product_price=form.product_price.data,
-                    product_quantity=form.product_quantity.data,
-                    low_stock_threshold=form.low_stock_threshold.data or 5,
-                )
+            product = Product(
+                product_type=form.product_type.data,
+                product_name=form.product_name.data,
+                product_model=form.product_model.data,
+                product_color=form.product_color.data,
+                product_price=form.product_price.data,
+                product_quantity=form.product_quantity.data,
+                low_stock_threshold=form.low_stock_threshold.data or 5,
             )
+            db.session.add(product)
             db.session.commit()
+            log_user_action("PRODUCT_CREATE", f"Created product: {product.product_name} ({product.product_model})")
             flash("Product added successfully!", "success")
         except Exception as e:
             db.session.rollback()
@@ -993,6 +1122,7 @@ def edit_product(id):
 
     if form.validate_on_submit():
         old_quantity = product.product_quantity
+        old_name = product.product_name
         form.populate_obj(product)
 
         new_quantity = form.product_quantity.data
@@ -1014,6 +1144,7 @@ def edit_product(id):
                 )
 
         db.session.commit()
+        log_user_action("PRODUCT_UPDATE", f"Updated product: {old_name} -> {product.product_name}, qty: {old_quantity} -> {new_quantity}")
         flash("Product updated successfully!", "success")
         return redirect(url_for("products"))
     return render_template("edit_product.html", product=product, form=form)
@@ -1023,8 +1154,10 @@ def edit_product(id):
 @admin_required
 def delete_product(id):
     product = Product.query.get_or_404(id)
+    product_name = product.product_name
     product.is_active = False
     db.session.commit()
+    log_user_action("PRODUCT_DELETE", f"Deleted product: {product_name}")
     flash("Product deleted successfully!", "success")
     return redirect(url_for("products"))
 
@@ -1067,6 +1200,9 @@ def stock_adjust():
         flash("Quantity adjustment cannot be zero.", "danger")
         return redirect(url_for("stock_management"))
 
+    product = db.session.get(Product, product_id)
+    product_name = product.product_name if product else "Unknown"
+
     success, message = update_stock(
         product_id=product_id,
         quantity_change=adjustment,
@@ -1076,6 +1212,8 @@ def stock_adjust():
     )
 
     if success:
+        action_type = "STOCK_IN" if adjustment > 0 else "STOCK_OUT"
+        log_user_action(action_type, f"Stock {action_type.replace('_', ' ').lower()}: {product_name}, qty: {adjustment}, notes: {notes[:50]}")
         flash(message, "success")
     else:
         flash(message, "danger")
@@ -1121,6 +1259,7 @@ def cart_add(product_id):
             else:
                 item["quantity"] = total
                 save_cart(cart)
+                log_user_action("CART_UPDATE", f"Updated cart: {product.product_name}, qty: {total}")
                 flash(f"Updated {product.product_name} quantity in cart", "success")
             return redirect(url_for("cart"))
 
@@ -1130,6 +1269,7 @@ def cart_add(product_id):
 
     cart.append({"product_id": product_id, "quantity": quantity})
     save_cart(cart)
+    log_user_action("CART_ADD", f"Added to cart: {product.product_name}, qty: {quantity}")
     flash(f"Added {product.product_name} to cart", "success")
     return redirect(url_for("cart"))
 
@@ -1139,8 +1279,11 @@ def cart_add(product_id):
 @csrf.exempt
 def cart_remove(product_id):
     cart = get_cart()
+    product = db.session.get(Product, product_id)
+    product_name = product.product_name if product else f"Product ID {product_id}"
     cart = [item for item in cart if item["product_id"] != product_id]
     save_cart(cart)
+    log_user_action("CART_REMOVE", f"Removed from cart: {product_name}")
     flash("Item removed from cart", "success")
     return redirect(url_for("cart"))
 
@@ -1166,6 +1309,7 @@ def cart_update(product_id):
             else:
                 item["quantity"] = quantity
                 save_cart(cart)
+                log_user_action("CART_UPDATE", f"Updated cart: {product.product_name}, qty: {quantity}")
                 flash(f"Updated {product.product_name} quantity", "success")
             break
     return redirect(url_for("cart"))
@@ -1237,6 +1381,11 @@ def cart_checkout():
 
         invoice.calculate_totals()
         db.session.commit()
+        customer = db.session.get(Customer, customer_id)
+        customer_name = customer.full_name if customer else f"Customer ID {customer_id}"
+        item_count = len(cart)
+        total_items = sum(item["quantity"] for item in cart)
+        log_user_action("INVOICE_CREATE", f"Created invoice: {invoice.invoice_number}, customer: {customer_name}, items: {item_count}, qty: {total_items}, total: {invoice.total}")
         save_cart([])
         flash(f"Invoice {invoice.invoice_number} created successfully!", "success")
         return redirect(url_for("invoice_print", invoice_id=invoice.invoice_id))
@@ -1451,6 +1600,7 @@ def remove_invoice_item(item_id):
 def update_invoice_status(invoice_id):
     invoice = Invoice.query.get_or_404(invoice_id)
     new_status = request.form.get("status", "")
+    old_status = invoice.status
 
     if new_status not in ["paid", "pending", "cancelled"]:
         flash("Invalid status.", "danger")
@@ -1462,6 +1612,7 @@ def update_invoice_status(invoice_id):
             invoice.payment_method = request.form.get("payment_method", "")[:50]
             invoice.payment_reference = request.form.get("payment_reference", "")[:255]
             invoice.payment_date = datetime.now()
+            log_user_action("INVOICE_PAID", f"Invoice {invoice.invoice_number} marked as paid, method: {invoice.payment_method or 'N/A'}")
             flash(f"Invoice {invoice.invoice_number} marked as paid!", "success")
         elif new_status == "cancelled":
             if invoice.can_cancel:
@@ -1477,6 +1628,7 @@ def update_invoice_status(invoice_id):
                         notes="Invoice cancelled",
                     )
                 invoice.status = "cancelled"
+                log_user_action("INVOICE_CANCELLED", f"Invoice {invoice.invoice_number} cancelled, stock returned")
                 flash(
                     f"Invoice {invoice.invoice_number} cancelled and stock returned!",
                     "success",
@@ -1486,6 +1638,7 @@ def update_invoice_status(invoice_id):
                 return redirect(url_for("invoices"))
         elif new_status == "pending":
             invoice.status = "pending"
+            log_user_action("INVOICE_PENDING", f"Invoice {invoice.invoice_number} status changed to pending")
             flash(f"Invoice {invoice.invoice_number} marked as pending!", "success")
 
         db.session.commit()
@@ -1520,6 +1673,7 @@ def delete_invoice(invoice_id):
     invoice_number = invoice.invoice_number
     db.session.delete(invoice)
     db.session.commit()
+    log_user_action("INVOICE_DELETE", f"Deleted invoice: {invoice_number}, stock returned")
     flash(f"Invoice {invoice_number} deleted successfully!", "success")
     return redirect(url_for("invoices"))
 
@@ -1682,6 +1836,17 @@ def search_customers_ajax():
             for c in customers
         ]
     )
+
+
+@app.errorhandler(404)
+def not_found_error(error):
+    return render_template("404.html"), 404
+
+
+@app.errorhandler(500)
+def internal_error(error):
+    db.session.rollback()
+    return render_template("500.html"), 500
 
 
 if __name__ == "__main__":

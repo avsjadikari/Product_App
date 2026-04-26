@@ -83,3 +83,75 @@
 2026-03-15 13:32:33 | INFO     | app | Debug mode: True
 2026-03-15 13:32:33 | INFO     | app | Database: localhost:5432/product
 2026-03-15 13:32:33 | INFO     | app | ============================================================
+2026-04-26 17:57:52 | INFO     | app | ============================================================
+2026-04-26 17:57:52 | INFO     | app | Application starting up
+2026-04-26 17:57:52 | INFO     | app | Debug mode: True
+2026-04-26 17:57:52 | INFO     | app | Database: localhost:5432/product
+2026-04-26 17:57:52 | INFO     | app | ============================================================
+2026-04-26 17:58:27 | INFO     | app | ============================================================
+2026-04-26 17:58:27 | INFO     | app | Application starting up
+2026-04-26 17:58:27 | INFO     | app | Debug mode: True
+2026-04-26 17:58:27 | INFO     | app | Database: localhost:5432/product
+2026-04-26 17:58:27 | INFO     | app | ============================================================
+2026-04-26 17:58:29 | INFO     | app | ============================================================
+2026-04-26 17:58:29 | INFO     | app | Application starting up
+2026-04-26 17:58:29 | INFO     | app | Debug mode: True
+2026-04-26 17:58:29 | INFO     | app | Database: localhost:5432/product
+2026-04-26 17:58:29 | INFO     | app | ============================================================
+2026-04-26 18:01:33 | INFO     | app | ============================================================
+2026-04-26 18:01:33 | INFO     | app | Application starting up
+2026-04-26 18:01:33 | INFO     | app | Debug mode: True
+2026-04-26 18:01:33 | INFO     | app | Database: localhost:5432/product
+2026-04-26 18:01:33 | INFO     | app | ============================================================
+2026-04-26 18:01:43 | INFO     | app | ============================================================
+2026-04-26 18:01:43 | INFO     | app | Application starting up
+2026-04-26 18:01:43 | INFO     | app | Debug mode: True
+2026-04-26 18:01:43 | INFO     | app | Database: localhost:5432/product
+2026-04-26 18:01:43 | INFO     | app | ============================================================
+2026-04-26 18:02:45 | INFO     | app | ============================================================
+2026-04-26 18:02:45 | INFO     | app | Application starting up
+2026-04-26 18:02:45 | INFO     | app | Debug mode: True
+2026-04-26 18:02:45 | INFO     | app | Database: localhost:5432/product
+2026-04-26 18:02:45 | INFO     | app | ============================================================
+2026-04-26 18:02:46 | INFO     | app | ============================================================
+2026-04-26 18:02:46 | INFO     | app | Application starting up
+2026-04-26 18:02:46 | INFO     | app | Debug mode: True
+2026-04-26 18:02:46 | INFO     | app | Database: localhost:5432/product
+2026-04-26 18:02:46 | INFO     | app | ============================================================
+2026-04-26 18:46:27 | INFO     | app | ============================================================
+2026-04-26 18:46:27 | INFO     | app | Application starting up
+2026-04-26 18:46:27 | INFO     | app | Debug mode: True
+2026-04-26 18:46:27 | INFO     | app | Database: localhost:5432/product
+2026-04-26 18:46:27 | INFO     | app | ============================================================
+2026-04-26 18:46:27 | INFO     | app | === Logging initialized successfully! ===
+2026-04-26 18:46:27 | INFO     | app | === Logging initialized successfully! ===
+2026-04-26 18:46:28 | INFO     | app | ============================================================
+2026-04-26 18:46:28 | INFO     | app | Application starting up
+2026-04-26 18:46:28 | INFO     | app | Debug mode: True
+2026-04-26 18:46:28 | INFO     | app | Database: localhost:5432/product
+2026-04-26 18:46:28 | INFO     | app | ============================================================
+2026-04-26 18:46:28 | INFO     | app | === Logging initialized successfully! ===
+2026-04-26 18:46:28 | INFO     | app | === Logging initialized successfully! ===
+2026-04-26 18:47:02 | INFO     | app | USER: admin | ACTION: LOGIN | IP: 127.0.0.1 | DETAILS: User admin logged in successfully
+2026-04-26 18:47:02 | INFO     | app | USER: admin | ACTION: LOGIN | IP: 127.0.0.1 | DETAILS: User admin logged in successfully
+2026-04-26 18:47:18 | INFO     | app | USER: admin | ACTION: CART_ADD | IP: 127.0.0.1 | DETAILS: Added to cart: iPad, qty: 1
+2026-04-26 18:47:18 | INFO     | app | USER: admin | ACTION: CART_ADD | IP: 127.0.0.1 | DETAILS: Added to cart: iPad, qty: 1
+2026-04-26 18:47:23 | INFO     | app | USER: admin | ACTION: CART_ADD | IP: 127.0.0.1 | DETAILS: Added to cart: iPhone, qty: 1
+2026-04-26 18:47:23 | INFO     | app | USER: admin | ACTION: CART_ADD | IP: 127.0.0.1 | DETAILS: Added to cart: iPhone, qty: 1
+2026-04-26 18:47:27 | INFO     | app | USER: admin | ACTION: INVOICE_CREATE | IP: 127.0.0.1 | DETAILS: Created invoice: INV-20260426-0006, customer: Jane Smith, items: 2, qty: 2, total: 1699.98
+2026-04-26 18:47:27 | INFO     | app | USER: admin | ACTION: INVOICE_CREATE | IP: 127.0.0.1 | DETAILS: Created invoice: INV-20260426-0006, customer: Jane Smith, items: 2, qty: 2, total: 1699.98
+2026-04-26 18:47:34 | INFO     | app | USER: admin | ACTION: INVOICE_PAID | IP: 127.0.0.1 | DETAILS: Invoice INV-20260426-0006 marked as paid, method: cash
+2026-04-26 18:47:34 | INFO     | app | USER: admin | ACTION: INVOICE_PAID | IP: 127.0.0.1 | DETAILS: Invoice INV-20260426-0006 marked as paid, method: cash
+2026-04-26 18:49:12 | INFO     | app | ============================================================
+2026-04-26 18:49:12 | INFO     | app | Application starting up
+2026-04-26 18:49:12 | INFO     | app | Debug mode: True
+2026-04-26 18:49:12 | INFO     | app | Database: localhost:5432/product
+2026-04-26 18:49:12 | INFO     | app | ============================================================
+2026-04-26 18:49:12 | INFO     | app | === Logging initialized successfully! ===
+2026-04-26 18:49:12 | INFO     | app | === Logging initialized successfully! ===
+2026-04-26 18:49:16 | INFO     | app | ============================================================
+2026-04-26 18:49:16 | INFO     | app | Application starting up
+2026-04-26 18:49:16 | INFO     | app | Debug mode: True
+2026-04-26 18:49:16 | INFO     | app | Database: localhost:5432/product
+2026-04-26 18:49:16 | INFO     | app | ============================================================
+2026-04-26 18:49:16 | INFO     | app | === Logging initialized successfully! ===

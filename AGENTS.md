@@ -4,7 +4,7 @@ This file provides guidance for AI agents working in this repository.
 
 ## Project Overview
 
-A Flask web application for managing customers, products, invoices with shopping cart functionality. Uses Flask-SQLAlchemy with PostgreSQL. Includes authentication, role-based access control, audit logging, stock management, reporting features, REST API with JWT authentication, and database setup wizard.
+A Flask web application for managing customers, products, invoices with shopping cart functionality. Uses Flask-SQLAlchemy with PostgreSQL. Includes authentication, role-based access control, comprehensive audit logging, stock management, reporting features, REST API with JWT authentication, Swagger/OpenAPI documentation, Docker deployment support, and database setup wizard.
 
 ## Technology Stack
 
@@ -18,6 +18,9 @@ A Flask web application for managing customers, products, invoices with shopping
 | API Auth | JWT (PyJWT) |
 | Migrations | Flask-Migrate |
 | UI | Bootstrap 5 + Jinja2 |
+| API Documentation | Swagger UI (OpenAPI 3.0) |
+| Production Server | Gunicorn |
+| Containerization | Docker, Docker Compose |
 | Testing | pytest |
 
 ## Running the Application
@@ -44,6 +47,24 @@ python app.py
 ```
 
 Runs on http://localhost:5000. Debug mode controlled by `FLASK_DEBUG` or `DEBUG` environment variable.
+
+### Docker Deployment
+
+```bash
+# Build and run with Docker Compose
+docker-compose up --build
+
+# Run in background
+docker-compose up -d --build
+```
+
+### Production with Gunicorn
+
+```bash
+gunicorn -c gunicorn.conf.py app:app
+# Or
+gunicorn --bind 0.0.0.0:5000 --workers 4 --timeout 120 app:app
+```
 
 ### Environment Variables
 
@@ -135,6 +156,11 @@ Requires admin authentication. Clears all data and recreates sample data.
 | `/users/add` | POST | Create new user |
 | `/users/delete/<int:id>` | GET | Deactivate user |
 
+### Audit Logs (Admin only)
+| Endpoint | Methods | Description |
+|----------|---------|-------------|
+| `/audit-logs` | GET | View all user activities with filters |
+
 ### Customer Management
 | Endpoint | Methods | Description |
 |----------|---------|-------------|
@@ -205,10 +231,19 @@ Requires admin authentication. Clears all data and recreates sample data.
 |----------|---------|-------------|
 | `/database/reset` | POST | Reset database to defaults (admin only) |
 
+### Error Pages
+| Endpoint | Methods | Description |
+|----------|---------|-------------|
+| `/404` | GET | Custom 404 error page |
+| `/500` | GET | Custom 500 error page |
+
 ### API Endpoints
 | Endpoint | Methods | Auth | Description |
 |----------|---------|------|-------------|
 | `/api/v1/health` | GET | No | Health check |
+| `/api/v1/swagger` | GET | No | Swagger UI |
+| `/api/v1/openapi.json` | GET | No | OpenAPI specification |
+| `/api/v1/docs` | GET | No | API documentation (JSON) |
 | `/api/v1/auth/login` | POST | No | Get JWT token |
 | `/api/v1/auth/refresh` | POST | JWT | Refresh JWT token |
 | `/api/v1/products` | GET | JWT | List products (paginated) |
@@ -225,8 +260,54 @@ Requires admin authentication. Clears all data and recreates sample data.
 
 | Role | Permissions |
 |------|-------------|
-| `admin` | Full access including user management, database reset |
+| `admin` | Full access including user management, audit logs, database reset |
 | `user` | Customer, product, invoice, cart, reports management |
+
+## Audit Logging
+
+### Overview
+
+All user actions are logged to `logs/app.log` with:
+- Username
+- Action type
+- IP address
+- Timestamp
+- Additional details
+
+### Tracked Actions
+
+| Action Type | Description |
+|-------------|-------------|
+| LOGIN | User logged in successfully |
+| LOGOUT | User logged out |
+| LOGIN_FAILED | Failed login attempt |
+| USER_CREATE | Created new user |
+| USER_DELETE | Deactivated user |
+| CUSTOMER_CREATE | Created new customer |
+| CUSTOMER_UPDATE | Updated customer |
+| CUSTOMER_DELETE | Deleted customer |
+| PRODUCT_CREATE | Created new product |
+| PRODUCT_UPDATE | Updated product |
+| PRODUCT_DELETE | Deleted product |
+| STOCK_IN | Manual stock increase |
+| STOCK_OUT | Manual stock decrease |
+| CART_ADD | Added item to cart |
+| CART_UPDATE | Updated cart quantity |
+| CART_REMOVE | Removed item from cart |
+| INVOICE_CREATE | Created new invoice |
+| INVOICE_PAID | Marked invoice as paid |
+| INVOICE_PENDING | Changed invoice to pending |
+| INVOICE_CANCELLED | Cancelled invoice |
+| INVOICE_DELETE | Deleted invoice |
+| EXPORT | Exported data to CSV |
+
+### Audit Log Viewer
+
+Admin users can access `/audit-logs` to view:
+- All activities with filters
+- Date range filter (Today, 7 days, 30 days, All Time)
+- Action type filter
+- User filter
 
 ## Security Features
 
@@ -238,9 +319,10 @@ Requires admin authentication. Clears all data and recreates sample data.
 - **Rate Limiting**: IP-based rate limiting on login
 - **Input Sanitization**: Search inputs limited to configurable length
 - **Transaction Rollback**: Database operations wrapped in try/except with rollback
-- **Audit Logging**: User actions logged with username, IP, and timestamp
+- **Audit Logging**: Comprehensive user action logging with username, IP, and timestamp
 - **JWT Authentication**: Token-based auth for API endpoints
 - **Password Validation**: Configurable requirements (length, uppercase, lowercase, digits, special chars)
+- **Custom Error Pages**: Branded 404 and 500 pages
 
 ## Code Style Guidelines
 
@@ -330,6 +412,12 @@ from forms import CustomerForm, ProductForm
 - Clear cart after successful checkout
 - Use transaction rollback on checkout failure
 
+### Audit Logging
+- Use `log_user_action(action, details)` for all user actions
+- Include relevant details (names, quantities, amounts)
+- Actions are logged to `logs/app.log`
+- Admin can view via `/audit-logs`
+
 ## Helper Functions
 
 | Function | Description |
@@ -341,7 +429,7 @@ from forms import CustomerForm, ProductForm
 | `save_cart(cart)` | Saves cart to session |
 | `update_stock(...)` | Updates product quantity with rollback |
 | `record_stock_movement(...)` | Records stock movement with rollback |
-| `log_user_action(action, details)` | Logs user action for audit |
+| `log_user_action(action, details)` | Logs user action for audit trail |
 | `log_error(type, message)` | Logs error for monitoring |
 | `validate_password(password)` | Validates password meets requirements |
 | `safe_int_convert(value, default)` | Safely convert to int |
@@ -382,10 +470,14 @@ pytest tests/test_file.py::test_function_name -v
 | `forms.py` | WTForms with validation |
 | `utils.py` | CSV export functions, search helpers, formatting utilities |
 | `config.py` | Configuration class with environment variable and file support |
-| `api.py` | REST API blueprint with JWT authentication |
+| `api.py` | REST API blueprint with JWT authentication and Swagger documentation |
 | `templates/` | Jinja2 HTML templates |
 | `liquibase/` | Database migration XML files |
 | `tests/` | Test suite |
+| `Dockerfile` | Docker build configuration |
+| `docker-compose.yml` | Docker Compose configuration |
+| `gunicorn.conf.py` | Gunicorn production server configuration |
+| `Procfile` | Deployment configuration for Heroku/Render |
 
 ## Configuration
 
@@ -416,7 +508,27 @@ JWT_SECRET_KEY, JWT_ACCESS_TOKEN_EXPIRES
 
 1. **Setup Wizard** (Recommended): First run redirects to `/setup`
 2. **Environment Variables**: Create `.env` file
-3. **Liquibase**: Use `liquibase/master.xml` for external migrations
+3. **Docker Compose**: Use docker-compose.yml
+4. **Liquibase**: Use `liquibase/master.xml` for external migrations
+
+## Docker Support
+
+### Quick Start
+
+```bash
+# Build and run
+docker-compose up --build
+
+# Access application at http://localhost:5000
+```
+
+### Environment Variables for Docker
+
+```env
+DB_PASSWORD=postgres
+SECRET_KEY=your-secret-key
+JWT_SECRET_KEY=your-jwt-secret
+```
 
 ## Security Notes
 
@@ -427,7 +539,7 @@ JWT_SECRET_KEY, JWT_ACCESS_TOKEN_EXPIRES
 - Input sanitization prevents abuse
 - All passwords are hashed using Werkzeug
 - Soft delete preserves data integrity
-- Audit logging tracks user actions
+- Comprehensive audit logging tracks all user actions
 - Use NUMERIC for money fields (not Float)
 
 ## Development Workflow

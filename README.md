@@ -1,6 +1,6 @@
 # Product App - Point of Sale Management System
 
-A Flask-based Point of Sale (POS) application for managing customers, products, invoices, and inventory. Features include shopping cart, invoice generation, stock tracking, sales reporting, and REST API.
+A Flask-based Point of Sale (POS) application for managing customers, products, invoices, and inventory. Features include shopping cart, invoice generation, stock tracking, sales reporting, REST API with Swagger documentation, and comprehensive audit logging.
 
 ## Table of Contents
 
@@ -9,13 +9,13 @@ A Flask-based Point of Sale (POS) application for managing customers, products, 
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
 - [Setup Methods](#setup-methods)
-  - [Method 1: Setup Wizard (Recommended)](#method-1-setup-wizard-recommended)
-  - [Method 2: Environment Variables](#method-2-environment-variables)
-  - [Method 3: Liquibase (External Database)](#method-3-liquibase-external-database)
 - [Running the Application](#running-the-application)
+- [Docker Deployment](#docker-deployment)
+- [Production Deployment](#production-deployment)
 - [Default Credentials](#default-credentials)
 - [Configuration](#configuration)
 - [API Documentation](#api-documentation)
+- [Audit Logging](#audit-logging)
 - [Project Structure](#project-structure)
 - [Security Features](#security-features)
 - [Development](#development)
@@ -33,7 +33,13 @@ A Flask-based Point of Sale (POS) application for managing customers, products, 
 - **Stock Management**: Automatic stock tracking with movement history
 - **Reports**: Sales reports and stock valuation reports
 - **CSV Export**: Export products, customers, invoices to CSV
-- **REST API**: JWT-authenticated API for mobile apps
+- **REST API**: JWT-authenticated API with Swagger UI documentation
+- **API Documentation**: Interactive Swagger UI at `/api/v1/swagger`
+- **Audit Logging**: Comprehensive audit trail of all user actions
+- **Audit Log Viewer**: Admin-only web interface to view all activities
+- **Custom Error Pages**: Branded 404 and 500 error pages
+- **Docker Support**: Containerized deployment with Docker Compose
+- **Production Ready**: Gunicorn configuration for production deployment
 - **Database Setup Wizard**: First-time setup via web interface
 
 ---
@@ -50,6 +56,9 @@ A Flask-based Point of Sale (POS) application for managing customers, products, 
 | API Auth | JWT (PyJWT) |
 | Database Migrations | Flask-Migrate |
 | UI | Bootstrap 5 + Jinja2 |
+| API Documentation | Swagger UI (OpenAPI 3.0) |
+| Production Server | Gunicorn |
+| Containerization | Docker, Docker Compose |
 | Testing | pytest |
 
 ---
@@ -59,6 +68,7 @@ A Flask-based Point of Sale (POS) application for managing customers, products, 
 - Python 3.10+
 - PostgreSQL 14+
 - pip package manager
+- Docker (optional, for containerized deployment)
 
 ---
 
@@ -147,7 +157,21 @@ JWT_ACCESS_TOKEN_EXPIRES=3600
 
 Then run: `python app.py`
 
-### Method 3: Liquibase (External Database)
+### Method 3: Docker Deployment
+
+```bash
+# 1. Copy the example environment file
+copy .env.example .env
+
+# 2. Edit .env with your preferences (DB_PASSWORD is required)
+
+# 3. Build and start containers
+docker-compose up --build
+
+# 4. Open browser to http://localhost:5000
+```
+
+### Method 4: Liquibase (External Database)
 
 For production or external database management:
 
@@ -194,6 +218,96 @@ pip install gunicorn
 gunicorn -w 4 -b 0.0.0.0:5000 app:app
 ```
 
+Or use the included configuration:
+```bash
+gunicorn -c gunicorn.conf.py app:app
+```
+
+---
+
+## Docker Deployment
+
+### Quick Start with Docker Compose
+
+```bash
+# Build and start all services
+docker-compose up --build
+
+# Run in background
+docker-compose up -d --build
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+```
+
+### Services
+
+| Service | Description | Port |
+|---------|-------------|------|
+| app | Flask application | 5000 |
+| db | PostgreSQL database | 5432 |
+
+### Environment Variables
+
+Create a `.env` file based on `.env.example`:
+
+```env
+DB_PASSWORD=your_password
+SECRET_KEY=your-secret-key
+JWT_SECRET_KEY=your-jwt-secret
+```
+
+### Manual Docker Build
+
+```bash
+# Build the image
+docker build -t product-app .
+
+# Run the container
+docker run -d -p 5000:5000 \
+  -e DB_HOST=db \
+  -e DB_NAME=productapp \
+  -e DB_USER=postgres \
+  -e DB_PASSWORD=postgres \
+  --link postgres:db \
+  product-app
+```
+
+---
+
+## Production Deployment
+
+### Using Gunicorn with Configuration File
+
+```bash
+# The gunicorn.conf.py is already configured
+gunicorn app:app
+
+# Or specify custom settings
+gunicorn -w 4 -b 0.0.0.0:5000 --timeout 120 app:app
+```
+
+### Using Procfile (for Heroku, Render, etc.)
+
+The `Procfile` is configured for deployment platforms:
+
+```
+web: gunicorn --bind 0.0.0.0:$PORT --workers 4 --timeout 120 app:app
+```
+
+### Production Checklist
+
+1. Set `FLASK_ENV=production`
+2. Set `FLASK_DEBUG=False`
+3. Use strong `SECRET_KEY` and `JWT_SECRET_KEY`
+4. Use PostgreSQL (not SQLite)
+5. Enable HTTPS/SSL
+6. Configure proper CORS if needed
+7. Set up log rotation (included in gunicorn.conf.py)
+
 ---
 
 ## Default Credentials
@@ -238,6 +352,14 @@ gunicorn -w 4 -b 0.0.0.0:5000 app:app
 
 ## API Documentation
 
+### Interactive Swagger UI
+
+Access the interactive API documentation at: `http://localhost:5000/api/v1/swagger`
+
+### OpenAPI Specification
+
+The full OpenAPI 3.0 specification is available at: `http://localhost:5000/api/v1/openapi.json`
+
 ### Authentication
 
 ```bash
@@ -262,6 +384,8 @@ curl -X POST http://localhost:5000/api/v1/auth/login \
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | GET | `/api/v1/health` | No | Health check |
+| GET | `/api/v1/swagger` | No | Swagger UI |
+| GET | `/api/v1/openapi.json` | No | OpenAPI spec |
 | POST | `/api/v1/auth/login` | No | Get JWT token |
 | POST | `/api/v1/auth/refresh` | JWT | Refresh token |
 | GET | `/api/v1/products` | JWT | List products |
@@ -295,6 +419,55 @@ curl "http://localhost:5000/api/v1/products?search=laptop" \
 
 ---
 
+## Audit Logging
+
+### Overview
+
+All user actions are automatically logged to `logs/app.log` with:
+- Username
+- Action type
+- IP address
+- Timestamp
+- Additional details
+
+### Audit Log Viewer
+
+Admin users can view audit logs via the web interface at `/audit-logs`
+
+Features:
+- Filter by date range (Today, 7 days, 30 days, All)
+- Filter by action type
+- Filter by username
+
+### Tracked Actions
+
+| Action Type | Description |
+|-------------|-------------|
+| LOGIN | User logged in successfully |
+| LOGOUT | User logged out |
+| LOGIN_FAILED | Failed login attempt |
+| USER_CREATE | Created new user |
+| USER_DELETE | Deactivated user |
+| CUSTOMER_CREATE | Created new customer |
+| CUSTOMER_UPDATE | Updated customer |
+| CUSTOMER_DELETE | Deleted customer |
+| PRODUCT_CREATE | Created new product |
+| PRODUCT_UPDATE | Updated product |
+| PRODUCT_DELETE | Deleted product |
+| STOCK_IN | Manual stock increase |
+| STOCK_OUT | Manual stock decrease |
+| CART_ADD | Added item to cart |
+| CART_UPDATE | Updated cart quantity |
+| CART_REMOVE | Removed item from cart |
+| INVOICE_CREATE | Created new invoice |
+| INVOICE_PAID | Marked invoice as paid |
+| INVOICE_PENDING | Changed invoice to pending |
+| INVOICE_CANCELLED | Cancelled invoice |
+| INVOICE_DELETE | Deleted invoice |
+| EXPORT | Exported data to CSV |
+
+---
+
 ## Project Structure
 
 ```
@@ -303,15 +476,25 @@ Product_App/
 ├── models.py               # SQLAlchemy ORM models
 ├── forms.py               # WTForms
 ├── config.py              # Configuration management
-├── api.py                 # REST API blueprint
+├── api.py                 # REST API blueprint with Swagger
 ├── utils.py               # Utility functions
 ├── requirements.txt       # Python dependencies
 ├── pytest.ini            # Pytest configuration
+├── Dockerfile            # Docker build configuration
+├── docker-compose.yml    # Docker Compose configuration
+├── Procfile              # Deployment configuration (Heroku)
+├── gunicorn.conf.py      # Gunicorn configuration
+├── .dockerignore        # Docker ignore file
+├── .env.example         # Example environment variables
 │
 ├── templates/            # Jinja2 templates
 │   ├── base.html        # Base template
 │   ├── login.html       # Login page
-│   ├── setup.html      # Database setup wizard
+│   ├── setup.html       # Database setup wizard
+│   ├── home.html        # Dashboard
+│   ├── 404.html         # Custom 404 error page
+│   ├── 500.html         # Custom 500 error page
+│   ├── audit_logs.html  # Audit log viewer (Admin)
 │   └── ...
 │
 ├── tests/               # Test suite
@@ -332,6 +515,8 @@ Product_App/
 │       └── 006-invoice-items.xml
 │
 ├── logs/                # Application logs
+│   └── app.log          # Audit and application logs
+│
 └── config.json          # Runtime config (auto-generated)
 ```
 
@@ -346,8 +531,9 @@ Product_App/
 - **Input Validation**: Type checking and sanitization
 - **SQL Injection Prevention**: Parameterized queries via SQLAlchemy ORM + input validation
 - **JWT Authentication**: Token-based API security
-- **Audit Logging**: All user actions logged
+- **Audit Logging**: Comprehensive user action logging
 - **Decimal Precision**: NUMERIC(10,2) for money fields to prevent floating-point errors
+- **Custom Error Pages**: Branded 404 and 500 pages
 
 ---
 
