@@ -93,6 +93,28 @@ csrf = CSRFProtect(app)
 
 app_logger = logging.getLogger(__name__)
 
+import logging
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+
+log_dir = Path(__file__).parent / "logs"
+log_dir.mkdir(exist_ok=True)
+log_path = log_dir / "app.log"
+
+file_handler = RotatingFileHandler(log_path, maxBytes=10*1024*1024, backupCount=5)
+file_handler.setLevel(logging.INFO)
+formatter = logging.Formatter(
+    "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+file_handler.setFormatter(formatter)
+
+logging.getLogger("app").handlers = []
+app_logger = logging.getLogger("app")
+app_logger.addHandler(file_handler)
+app_logger.setLevel(logging.INFO)
+app_logger.propagate = False
+
 # Initialize _last_config_uri from startup config
 config_file = Path(__file__).parent / "config.json"
 _last_config_uri = None
