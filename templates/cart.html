@@ -20,7 +20,7 @@
                             <tr>
                                 <th><i class="bi bi-box me-1"></i>Product</th>
                                 <th><i class="bi bi-currency-dollar me-1"></i>Price</th>
-                                <th><i class="bi bi-hash me-1"></i>Qty</th>
+                                <th style="min-width: 140px;"><i class="bi bi-hash me-1"></i>Qty</th>
                                 <th><i class="bi bi-calculator me-1"></i>Total</th>
                                 <th></th>
                             </tr>
@@ -33,12 +33,12 @@
                                     <small class="text-secondary">{{ item.product.product_model }}</small>
                                 </td>
                                 <td>LKR {{ "%.2f"|format(item.product.product_price) }}</td>
-                                <td style="width: 120px;">
-                                    <form method="post" action="/cart/update/{{ item.product.product_id }}" class="d-flex">
+                                <td style="min-width: 140px;">
+                                    <form method="post" action="/cart/update/{{ item.product.product_id }}" class="d-flex align-items-center">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                        <input type="number" name="quantity" class="form-control form-control-sm" min="1" max="{{ item.product.product_quantity + item.quantity }}" value="{{ item.quantity }}" required>
-                                        <button type="submit" class="btn btn-sm btn-outline-primary ms-1">
-                                            <i class="bi bi-check"></i>
+                                        <input type="number" name="quantity" class="form-control form-control-sm" style="width: 70px;" min="1" max="{{ item.product.product_quantity + item.quantity }}" value="{{ item.quantity }}" required>
+                                        <button type="submit" class="btn btn-sm btn-outline-primary ms-2" title="Update quantity">
+                                            <i class="bi bi-check-lg"></i>
                                         </button>
                                     </form>
                                 </td>
