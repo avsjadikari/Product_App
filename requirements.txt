@@ -1,7 +1,6 @@
 flask
 flask_sqlalchemy
 flask_migrate
-flask-swagger-ui
 psycopg2-binary
 wtforms
 flask-wtf
@@ -10,4 +9,3 @@ python-dotenv
 pyjwt
 pytest
 pytest-flask
-gunicorn

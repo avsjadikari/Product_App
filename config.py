@@ -228,14 +228,8 @@ class Config:
             datefmt="%Y-%m-%d %H:%M:%S",
         )
         file_handler.setFormatter(formatter)
-
         app.logger.addHandler(file_handler)
         app.logger.setLevel(getattr(logging, cls.LOG_LEVEL))
-
-        app_logger = logging.getLogger("app")
-        app_logger.addHandler(file_handler)
-        app_logger.setLevel(getattr(logging, cls.LOG_LEVEL))
-
         app.logger.info("=" * 60)
         app.logger.info("Application starting up")
         app.logger.info(f"Debug mode: {cls.DEBUG}")
