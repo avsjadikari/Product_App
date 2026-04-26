@@ -748,6 +748,104 @@ def home():
     )
 
 
+@app.route("/audit-logs")
+@admin_required
+def audit_logs():
+    """Display audit logs from the log file."""
+    from datetime import datetime, timedelta
+    from pathlib import Path
+
+    date_range = request.args.get("date_range", "7days")
+    action_type = request.args.get("action_type", "")
+    user_filter = request.args.get("user", "")
+
+    log_file = Path(__file__).parent / "logs" / "app.log"
+    logs = []
+
+    date_range_labels = {
+        "today": "Today",
+        "7days": "Last 7 Days",
+        "30days": "Last 30 Days",
+        "all": "All Time"
+    }
+    date_range_label = date_range_labels.get(date_range, "All Time")
+
+    if log_file.exists():
+        try:
+            with open(log_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    if "USER:" not in line:
+                        continue
+
+                    parts = line.strip().split(" | ")
+                    if len(parts) < 5:
+                        continue
+
+                    try:
+                        timestamp_str = parts[0]
+                        log_time = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
+                    except ValueError:
+                        continue
+
+                    if date_range != "all":
+                        now = datetime.now()
+                        if date_range == "today":
+                            start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+                        elif date_range == "7days":
+                            start_date = now - timedelta(days=7)
+                        elif date_range == "30days":
+                            start_date = now - timedelta(days=30)
+                        else:
+                            start_date = datetime.min
+
+                        if log_time < start_date:
+                            continue
+
+                    user_part = parts[3] if len(parts) > 3 else ""
+                    user = user_part.replace("USER: ", "") if "USER:" in user_part else "Unknown"
+
+                    action_part = parts[4] if len(parts) > 4 else ""
+                    action = action_part.replace("ACTION: ", "") if "ACTION:" in action_part else "Unknown"
+
+                    ip_part = parts[5] if len(parts) > 5 else ""
+                    ip = ip_part.replace("IP: ", "") if "IP:" in ip_part else "Unknown"
+
+                    details = ""
+                    if "DETAILS:" in line:
+                        details_part = line.split("DETAILS: ")[1].strip() if "DETAILS: " in line else ""
+                        details = details_part
+
+                    if action_type and action_type not in action:
+                        continue
+                    if user_filter and user_filter != user:
+                        continue
+
+                    logs.append({
+                        "timestamp": log_time.strftime("%Y-%m-%d %H:%M:%S"),
+                        "username": user,
+                        "action": action,
+                        "ip": ip,
+                        "details": details
+                    })
+
+        except Exception as e:
+            app_logger.error(f"Error reading audit logs: {str(e)}")
+
+    logs.reverse()
+
+    users = User.query.all()
+
+    return render_template(
+        "audit_logs.html",
+        logs=logs[:200],
+        users=users,
+        date_range=date_range,
+        action_type=action_type,
+        user_filter=user_filter,
+        date_range_label=date_range_label
+    )
+
+
 @app.route("/users")
 @admin_required
 def users():
@@ -1682,6 +1780,17 @@ def search_customers_ajax():
             for c in customers
         ]
     )
+
+
+@app.errorhandler(404)
+def not_found_error(error):
+    return render_template("404.html"), 404
+
+
+@app.errorhandler(500)
+def internal_error(error):
+    db.session.rollback()
+    return render_template("500.html"), 500
 
 
 if __name__ == "__main__":

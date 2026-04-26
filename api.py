@@ -8,7 +8,7 @@ from functools import wraps
 from typing import Any, Callable, Optional
 
 import jwt
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, render_template_string
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import check_password_hash
 
@@ -20,6 +20,133 @@ api = Blueprint("api", __name__, url_prefix="/api/v1")
 import logging
 
 api_logger = logging.getLogger(__name__)
+
+SWAGGER_UI_HTML = '''
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Product App API Documentation</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.11.0/swagger-ui.css">
+    <style>
+        body { margin: 0; padding: 0; }
+        .swagger-ui .topbar { display: none; }
+        .swagger-ui .info .title { font-size: 2.5rem; }
+    </style>
+</head>
+<body>
+    <div id="swagger-ui"></div>
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.11.0/swagger-ui-bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.11.0/swagger-ui-standalone-preset.js"></script>
+    <script>
+        window.onload = function() {
+            window.ui = SwaggerUIBundle({
+                url: "/api/v1/openapi.json",
+                dom_id: "#swagger-ui",
+                deepLinking: true,
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIStandalonePreset
+                ],
+                layout: "StandaloneLayout",
+                docExpansion: "list"
+            });
+        };
+    </script>
+</body>
+</html>
+'''
+
+OPENAPI_SPEC = {
+    "openapi": "3.0.3",
+    "info": {
+        "title": "Product App API",
+        "description": "RESTful API for the POS Application. Provides endpoints for managing products, customers, invoices, and stock.",
+        "version": "1.0.0"
+    },
+    "servers": [{"url": "/api/v1", "description": "Current API version"}],
+    "components": {
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT"
+            }
+        }
+    },
+    "paths": {
+        "/health": {
+            "get": {
+                "tags": ["Health"],
+                "summary": "Health check endpoint",
+                "responses": {"200": {"description": "Service is healthy"}}
+            }
+        },
+        "/auth/login": {
+            "post": {
+                "tags": ["Authentication"],
+                "summary": "Authenticate and get JWT token",
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["username", "password"],
+                                "properties": {
+                                    "username": {"type": "string"},
+                                    "password": {"type": "string"}
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {"200": {"description": "Login successful"}}
+            }
+        },
+        "/products": {
+            "get": {
+                "tags": ["Products"],
+                "summary": "Get all products",
+                "security": [{"bearerAuth": []}],
+                "responses": {"200": {"description": "List of products"}}
+            }
+        },
+        "/customers": {
+            "get": {
+                "tags": ["Customers"],
+                "summary": "Get all customers",
+                "security": [{"bearerAuth": []}],
+                "responses": {"200": {"description": "List of customers"}}
+            }
+        },
+        "/invoices": {
+            "get": {
+                "tags": ["Invoices"],
+                "summary": "Get all invoices",
+                "security": [{"bearerAuth": []}],
+                "responses": {"200": {"description": "List of invoices"}}
+            }
+        },
+        "/stock": {
+            "get": {
+                "tags": ["Stock"],
+                "summary": "Get stock levels",
+                "security": [{"bearerAuth": []}],
+                "responses": {"200": {"description": "Stock levels"}}
+            }
+        },
+        "/dashboard": {
+            "get": {
+                "tags": ["Dashboard"],
+                "summary": "Get dashboard statistics",
+                "security": [{"bearerAuth": []}],
+                "responses": {"200": {"description": "Dashboard stats"}}
+            }
+        }
+    }
+}
 
 
 def create_token(user_id: int, username: str, role: str) -> str:
@@ -570,6 +697,18 @@ def get_dashboard():
             }
         }
     )
+
+
+@api.route("/swagger", methods=["GET"])
+def swagger_ui():
+    """Serve Swagger UI."""
+    return render_template_string(SWAGGER_UI_HTML)
+
+
+@api.route("/openapi.json", methods=["GET"])
+def openapi_spec():
+    """Serve OpenAPI specification."""
+    return jsonify(OPENAPI_SPEC)
 
 
 @api.route("/docs", methods=["GET"])
