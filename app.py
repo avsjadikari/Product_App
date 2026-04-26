@@ -876,6 +876,7 @@ def add_user():
     user.set_password(password)
     db.session.add(user)
     db.session.commit()
+    log_user_action("USER_CREATE", f"Created user: {username} with role: {role}")
     flash(f"User {username} created successfully!", "success")
     return redirect(url_for("users"))
 
@@ -890,6 +891,7 @@ def delete_user(id):
     username = user.username
     user.is_active = False
     db.session.commit()
+    log_user_action("USER_DELETE", f"Deactivated user: {username}")
     flash(f"User {username} deleted successfully!", "success")
     return redirect(url_for("users"))
 
