@@ -173,6 +173,7 @@ def log_user_action(action: str, details: Optional[str] = None) -> None:
         log_msg += f" | DETAILS: {details}"
 
     app_logger.info(log_msg)
+    print(f"[AUDIT] {log_msg}")
 
 
 def log_error(error_type: str, error_message: str) -> None:
