@@ -953,16 +953,16 @@ def add_customer():
     form = CustomerForm()
     if form.validate_on_submit():
         try:
-            db.session.add(
-                Customer(
-                    first_name=form.first_name.data,
-                    last_name=form.last_name.data,
-                    phone_number=form.phone_number.data,
-                    customer_address=form.customer_address.data,
-                    email=form.email.data,
-                )
+            customer = Customer(
+                first_name=form.first_name.data,
+                last_name=form.last_name.data,
+                phone_number=form.phone_number.data,
+                customer_address=form.customer_address.data,
+                email=form.email.data,
             )
+            db.session.add(customer)
             db.session.commit()
+            log_user_action("CUSTOMER_CREATE", f"Created customer: {customer.full_name}")
             flash("Customer added successfully!", "success")
         except Exception as e:
             db.session.rollback()
@@ -983,6 +983,7 @@ def edit_customer(id):
     if form.validate_on_submit():
         form.populate_obj(customer)
         db.session.commit()
+        log_user_action("CUSTOMER_UPDATE", f"Updated customer: {customer.full_name}")
         flash("Customer updated successfully!", "success")
         return redirect(url_for("customers"))
     return render_template("edit_customer.html", customer=customer, form=form)
@@ -1004,8 +1005,10 @@ def view_customer(id):
 @admin_required
 def delete_customer(id):
     customer = Customer.query.get_or_404(id)
+    customer_name = customer.full_name
     customer.is_active = False
     db.session.commit()
+    log_user_action("CUSTOMER_DELETE", f"Deleted customer: {customer_name}")
     flash("Customer deleted successfully!", "success")
     return redirect(url_for("customers"))
 
@@ -1059,18 +1062,18 @@ def add_product():
     form = ProductForm()
     if form.validate_on_submit():
         try:
-            db.session.add(
-                Product(
-                    product_type=form.product_type.data,
-                    product_name=form.product_name.data,
-                    product_model=form.product_model.data,
-                    product_color=form.product_color.data,
-                    product_price=form.product_price.data,
-                    product_quantity=form.product_quantity.data,
-                    low_stock_threshold=form.low_stock_threshold.data or 5,
-                )
+            product = Product(
+                product_type=form.product_type.data,
+                product_name=form.product_name.data,
+                product_model=form.product_model.data,
+                product_color=form.product_color.data,
+                product_price=form.product_price.data,
+                product_quantity=form.product_quantity.data,
+                low_stock_threshold=form.low_stock_threshold.data or 5,
             )
+            db.session.add(product)
             db.session.commit()
+            log_user_action("PRODUCT_CREATE", f"Created product: {product.product_name} ({product.product_model})")
             flash("Product added successfully!", "success")
         except Exception as e:
             db.session.rollback()
@@ -1091,6 +1094,7 @@ def edit_product(id):
 
     if form.validate_on_submit():
         old_quantity = product.product_quantity
+        old_name = product.product_name
         form.populate_obj(product)
 
         new_quantity = form.product_quantity.data
@@ -1112,6 +1116,7 @@ def edit_product(id):
                 )
 
         db.session.commit()
+        log_user_action("PRODUCT_UPDATE", f"Updated product: {old_name} -> {product.product_name}, qty: {old_quantity} -> {new_quantity}")
         flash("Product updated successfully!", "success")
         return redirect(url_for("products"))
     return render_template("edit_product.html", product=product, form=form)
@@ -1121,8 +1126,10 @@ def edit_product(id):
 @admin_required
 def delete_product(id):
     product = Product.query.get_or_404(id)
+    product_name = product.product_name
     product.is_active = False
     db.session.commit()
+    log_user_action("PRODUCT_DELETE", f"Deleted product: {product_name}")
     flash("Product deleted successfully!", "success")
     return redirect(url_for("products"))
 
@@ -1165,6 +1172,9 @@ def stock_adjust():
         flash("Quantity adjustment cannot be zero.", "danger")
         return redirect(url_for("stock_management"))
 
+    product = db.session.get(Product, product_id)
+    product_name = product.product_name if product else "Unknown"
+
     success, message = update_stock(
         product_id=product_id,
         quantity_change=adjustment,
@@ -1174,6 +1184,8 @@ def stock_adjust():
     )
 
     if success:
+        action_type = "STOCK_IN" if adjustment > 0 else "STOCK_OUT"
+        log_user_action(action_type, f"Stock {action_type.replace('_', ' ').lower()}: {product_name}, qty: {adjustment}")
         flash(message, "success")
     else:
         flash(message, "danger")
@@ -1219,6 +1231,7 @@ def cart_add(product_id):
             else:
                 item["quantity"] = total
                 save_cart(cart)
+                log_user_action("CART_UPDATE", f"Updated cart: {product.product_name}, qty: {total}")
                 flash(f"Updated {product.product_name} quantity in cart", "success")
             return redirect(url_for("cart"))
 
@@ -1228,6 +1241,7 @@ def cart_add(product_id):
 
     cart.append({"product_id": product_id, "quantity": quantity})
     save_cart(cart)
+    log_user_action("CART_ADD", f"Added to cart: {product.product_name}, qty: {quantity}")
     flash(f"Added {product.product_name} to cart", "success")
     return redirect(url_for("cart"))
 
@@ -1237,8 +1251,11 @@ def cart_add(product_id):
 @csrf.exempt
 def cart_remove(product_id):
     cart = get_cart()
+    product = db.session.get(Product, product_id)
+    product_name = product.product_name if product else f"Product ID {product_id}"
     cart = [item for item in cart if item["product_id"] != product_id]
     save_cart(cart)
+    log_user_action("CART_REMOVE", f"Removed from cart: {product_name}")
     flash("Item removed from cart", "success")
     return redirect(url_for("cart"))
 
@@ -1264,6 +1281,7 @@ def cart_update(product_id):
             else:
                 item["quantity"] = quantity
                 save_cart(cart)
+                log_user_action("CART_UPDATE", f"Updated cart: {product.product_name}, qty: {quantity}")
                 flash(f"Updated {product.product_name} quantity", "success")
             break
     return redirect(url_for("cart"))
@@ -1335,6 +1353,11 @@ def cart_checkout():
 
         invoice.calculate_totals()
         db.session.commit()
+        customer = db.session.get(Customer, customer_id)
+        customer_name = customer.full_name if customer else f"Customer ID {customer_id}"
+        item_count = len(cart)
+        total_items = sum(item["quantity"] for item in cart)
+        log_user_action("INVOICE_CREATE", f"Created invoice: {invoice.invoice_number}, customer: {customer_name}, items: {item_count}, qty: {total_items}, total: {invoice.total}")
         save_cart([])
         flash(f"Invoice {invoice.invoice_number} created successfully!", "success")
         return redirect(url_for("invoice_print", invoice_id=invoice.invoice_id))
@@ -1560,6 +1583,7 @@ def update_invoice_status(invoice_id):
             invoice.payment_method = request.form.get("payment_method", "")[:50]
             invoice.payment_reference = request.form.get("payment_reference", "")[:255]
             invoice.payment_date = datetime.now()
+            log_user_action("INVOICE_PAID", f"Invoice {invoice.invoice_number} marked as paid, method: {invoice.payment_method or 'N/A'}")
             flash(f"Invoice {invoice.invoice_number} marked as paid!", "success")
         elif new_status == "cancelled":
             if invoice.can_cancel:
@@ -1575,6 +1599,7 @@ def update_invoice_status(invoice_id):
                         notes="Invoice cancelled",
                     )
                 invoice.status = "cancelled"
+                log_user_action("INVOICE_CANCELLED", f"Invoice {invoice.invoice_number} cancelled, stock returned")
                 flash(
                     f"Invoice {invoice.invoice_number} cancelled and stock returned!",
                     "success",
@@ -1584,6 +1609,7 @@ def update_invoice_status(invoice_id):
                 return redirect(url_for("invoices"))
         elif new_status == "pending":
             invoice.status = "pending"
+            log_user_action("INVOICE_PENDING", f"Invoice {invoice.invoice_number} status changed to pending")
             flash(f"Invoice {invoice.invoice_number} marked as pending!", "success")
 
         db.session.commit()
@@ -1618,6 +1644,7 @@ def delete_invoice(invoice_id):
     invoice_number = invoice.invoice_number
     db.session.delete(invoice)
     db.session.commit()
+    log_user_action("INVOICE_DELETE", f"Deleted invoice: {invoice_number}, stock returned")
     flash(f"Invoice {invoice_number} deleted successfully!", "success")
     return redirect(url_for("invoices"))
 

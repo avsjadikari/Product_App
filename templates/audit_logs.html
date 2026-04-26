@@ -38,10 +38,44 @@
                         <label class="form-label">Action Type</label>
                         <select name="action_type" class="form-select">
                             <option value="" {% if not action_type %}selected{% endif %}>All Actions</option>
-                            <option value="LOGIN" {% if action_type == 'LOGIN' %}selected{% endif %}>Login</option>
-                            <option value="LOGOUT" {% if action_type == 'LOGOUT' %}selected{% endif %}>Logout</option>
-                            <option value="LOGIN_FAILED" {% if action_type == 'LOGIN_FAILED' %}selected{% endif %}>Login Failed</option>
-                            <option value="EXPORT" {% if action_type == 'EXPORT' %}selected{% endif %}>Export</option>
+                            <optgroup label="Authentication">
+                                <option value="LOGIN" {% if action_type == 'LOGIN' %}selected{% endif %}>Login</option>
+                                <option value="LOGOUT" {% if action_type == 'LOGOUT' %}selected{% endif %}>Logout</option>
+                                <option value="LOGIN_FAILED" {% if action_type == 'LOGIN_FAILED' %}selected{% endif %}>Login Failed</option>
+                            </optgroup>
+                            <optgroup label="User Management">
+                                <option value="USER_CREATE" {% if action_type == 'USER_CREATE' %}selected{% endif %}>User Created</option>
+                                <option value="USER_DELETE" {% if action_type == 'USER_DELETE' %}selected{% endif %}>User Deleted</option>
+                            </optgroup>
+                            <optgroup label="Customer">
+                                <option value="CUSTOMER_CREATE" {% if action_type == 'CUSTOMER_CREATE' %}selected{% endif %}>Customer Created</option>
+                                <option value="CUSTOMER_UPDATE" {% if action_type == 'CUSTOMER_UPDATE' %}selected{% endif %}>Customer Updated</option>
+                                <option value="CUSTOMER_DELETE" {% if action_type == 'CUSTOMER_DELETE' %}selected{% endif %}>Customer Deleted</option>
+                            </optgroup>
+                            <optgroup label="Product">
+                                <option value="PRODUCT_CREATE" {% if action_type == 'PRODUCT_CREATE' %}selected{% endif %}>Product Created</option>
+                                <option value="PRODUCT_UPDATE" {% if action_type == 'PRODUCT_UPDATE' %}selected{% endif %}>Product Updated</option>
+                                <option value="PRODUCT_DELETE" {% if action_type == 'PRODUCT_DELETE' %}selected{% endif %}>Product Deleted</option>
+                            </optgroup>
+                            <optgroup label="Stock">
+                                <option value="STOCK_IN" {% if action_type == 'STOCK_IN' %}selected{% endif %}>Stock In</option>
+                                <option value="STOCK_OUT" {% if action_type == 'STOCK_OUT' %}selected{% endif %}>Stock Out</option>
+                            </optgroup>
+                            <optgroup label="Cart">
+                                <option value="CART_ADD" {% if action_type == 'CART_ADD' %}selected{% endif %}>Cart Add</option>
+                                <option value="CART_UPDATE" {% if action_type == 'CART_UPDATE' %}selected{% endif %}>Cart Update</option>
+                                <option value="CART_REMOVE" {% if action_type == 'CART_REMOVE' %}selected{% endif %}>Cart Remove</option>
+                            </optgroup>
+                            <optgroup label="Invoice">
+                                <option value="INVOICE_CREATE" {% if action_type == 'INVOICE_CREATE' %}selected{% endif %}>Invoice Created</option>
+                                <option value="INVOICE_PAID" {% if action_type == 'INVOICE_PAID' %}selected{% endif %}>Invoice Paid</option>
+                                <option value="INVOICE_PENDING" {% if action_type == 'INVOICE_PENDING' %}selected{% endif %}>Invoice Pending</option>
+                                <option value="INVOICE_CANCELLED" {% if action_type == 'INVOICE_CANCELLED' %}selected{% endif %}>Invoice Cancelled</option>
+                                <option value="INVOICE_DELETE" {% if action_type == 'INVOICE_DELETE' %}selected{% endif %}>Invoice Deleted</option>
+                            </optgroup>
+                            <optgroup label="Export">
+                                <option value="EXPORT" {% if action_type == 'EXPORT' %}selected{% endif %}>Export</option>
+                            </optgroup>
                         </select>
                     </div>
                     <div class="col-12 col-md-3">
