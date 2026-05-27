@@ -155,3 +155,8 @@
 2026-04-26 18:49:16 | INFO     | app | Database: localhost:5432/product
 2026-04-26 18:49:16 | INFO     | app | ============================================================
 2026-04-26 18:49:16 | INFO     | app | === Logging initialized successfully! ===
+2026-04-26 19:36:59 | INFO     | app | USER: admin | ACTION: USER_CREATE | IP: 127.0.0.1 | DETAILS: Created user: test1 with role: user
+2026-04-26 19:38:25 | INFO     | app | USER: admin | ACTION: USER_DELETE | IP: 127.0.0.1 | DETAILS: Deactivated user: Test
+2026-04-26 23:17:22 | INFO     | app | USER: Anonymous | ACTION: LOGIN_FAILED | IP: 127.0.0.1 | DETAILS: Failed login attempt for username: admin
+2026-04-26 23:17:32 | INFO     | app | USER: Anonymous | ACTION: LOGIN_FAILED | IP: 127.0.0.1 | DETAILS: Failed login attempt for username: admin
+2026-04-26 23:17:56 | INFO     | app | USER: admin | ACTION: LOGIN | IP: 127.0.0.1 | DETAILS: User admin logged in successfully
